@@ -27,12 +27,17 @@
                     OnAppendClick="() => _show = !_show">
         </MTextField>
 
-        <div class="d-flex align-center mb-6">
-            <MTextField @bind-Value="CaptchaInput"
-                        Label="Enter Code"
-                        Variant="MFieldVariant.Underlined">
-            </MTextField>
-            <img src="@CaptchaImageUrl" @onclick="GenerateCaptcha" style="cursor:pointer;" />
+        <div class="d-flex align-center justify-center mb-6" style="gap: 20px;">
+            <div style="flex: 1;">
+                <MTextField @bind-Value="CaptchaInput"
+                            Label="Enter Code"
+                            Outlined
+                            HideDetails="@("auto")">
+                </MTextField>
+            </div>
+            <div class="d-flex align-center justify-center" style="min-width: 160px; height: 70px; border: 2px solid #e0e0e0; border-radius: 8px; background: #f9f9f9; padding: 8px;">
+                <img src="@CaptchaImageUrl" @onclick="GenerateCaptcha" style="cursor:pointer; max-height: 55px; max-width: 140px; border-radius: 4px;" alt="Captcha" title="Click to refresh" />
+            </div>
         </div>
 
         <div class="d-flex align-center justify-space-between flex-wrap">
@@ -47,7 +52,23 @@
             <MAlert Type="AlertTypes.Error" Class="my-4">@_errorMessage</MAlert>
         }
 
-        <MButton Class="mt-11 rounded-4 text-btn white--text" @onclick="HandleLogin" Height=46 Width=340 Color="primary">Login</MButton>
+        <MButton Class="mt-11 rounded-4 text-btn white--text" 
+                 @onclick="HandleLogin" 
+                 Height=46 
+                 Width=340 
+                 Color="primary"
+                 Loading="_isLoading"
+                 Disabled="_isLoading">
+            @if (_isLoading)
+            {
+                <MProgressCircular Size="20" Color="white" Indeterminate />
+                <span class="ml-2">Logging in...</span>
+            }
+            else
+            {
+                @:Login
+            }
+        </MButton>
 
 
     </div>

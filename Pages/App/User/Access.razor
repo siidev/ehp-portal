@@ -250,9 +250,13 @@ else
         new() { Text = "Actions", Value = "Actions", Sortable = false }
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadData();
+        if (firstRender)
+        {
+            await LoadData();
+            StateHasChanged();
+        }
     }
 
     private async Task LoadData()

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  ssoportalx:
+    build: .
+    container_name: ssoportalx-app
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/wwwroot/uploads
+    restart: unless-stopped
+    networks:
+      - ssoportal-network
+
+networks:
+  ssoportal-network:
+    driver: bridge

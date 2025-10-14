@@ -2,6 +2,25 @@
 @page "/app/user/view/{Id}"
 @inherits ProComponentBase
 
+@if (_isLoading)
+{
+    <MCard>
+        <MCardText Class="text-center py-8">
+            <MProgressCircular Indeterminate Color="primary" />
+            <div class="mt-4">Loading user data...</div>
+        </MCardText>
+    </MCard>
+}
+else if (UserData.Id == "")
+{
+    <MCard>
+        <MCardText Class="text-center py-8">
+            <div>User not found</div>
+        </MCardText>
+    </MCard>
+}
+else
+{
 <MCard>
 <MCardText Class="px-6 pb-6">
 <MTabs @bind-Value="tab" HideSlider Height=10 Color="sample-green">
@@ -189,6 +208,7 @@
 
 </MCardText>
 </MCard>
+}
 
 @code {
 

@@ -16,6 +16,7 @@ namespace SSOPortalX.Pages.App.User
         private StringNumber? tab;
         private List<SSOPortalX.Data.Models.Application> _allApplications = new();
         private Dictionary<int, bool> _userAppAccess = new();
+        private bool _isLoading = true;
 
         [Inject]
         private UserService UserService { get; set; } = default!;
@@ -38,18 +39,38 @@ namespace SSOPortalX.Pages.App.User
             set { _userData = value; }
         }
 
-        protected override async Task OnInitializedAsync()
+        protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (int.TryParse(Id, out int userId))
+            if (firstRender)
             {
-                _userData = await UserService.GetUserByIdAsync(userId);
-                await LoadApplicationAccess(userId);
+                await LoadData();
+                StateHasChanged();
             }
+        }
 
-            if (_userData == null)
+        private async Task LoadData()
+        {
+            try
             {
-                // Handle user not found
-                NavigationManager.NavigateTo("/app/user/list");
+                if (int.TryParse(Id, out int userId))
+                {
+                    _userData = await UserService.GetUserByIdAsync(userId);
+                    await LoadApplicationAccess(userId);
+                }
+
+                if (_userData == null)
+                {
+                    // Handle user not found
+                    NavigationManager.NavigateTo("/app/user/list");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading user: {ex.Message}");
+            }
+            finally
+            {
+                _isLoading = false;
             }
         }
 

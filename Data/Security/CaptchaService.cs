@@ -1,88 +1,78 @@
 
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
-using System.Text;
-
 namespace SSOPortalX.Data.Security;
 
 public class CaptchaService
 {
     private const string CaptchaChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private readonly Random _random = new Random();
 
     public (string code, byte[] image) GenerateCaptchaImage(int width, int height)
     {
         var captchaCode = GenerateRandomCode(6);
-        var image = new Bitmap(width, height);
-        var graphics = Graphics.FromImage(image);
-
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.Clear(Color.White);
-
-        // Draw distortion lines
-        var random = new Random();
-        for (var i = 0; i < 10; i++)
-        {
-            var x1 = random.Next(width);
-            var y1 = random.Next(height);
-            var x2 = random.Next(width);
-            var y2 = random.Next(height);
-            graphics.DrawLine(new Pen(Color.LightGray), x1, y1, x2, y2);
-        }
-
-        // Draw CAPTCHA code
-        var fontSize = height - 10;
-        var font = new Font("Arial", fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
-        var brush = new SolidBrush(Color.Black);
-        var format = new StringFormat
-        {
-            Alignment = StringAlignment.Center,
-            LineAlignment = StringAlignment.Center
-        };
-
-        // Apply transformations for each character
-        var charPositions = new float[captchaCode.Length];
-        var charWidth = width / (float)captchaCode.Length;
-
-        for (int i = 0; i < captchaCode.Length; i++)
-        {
-            var gPath = new GraphicsPath();
-            var charRect = new RectangleF(i * charWidth, 0, charWidth, height);
-            gPath.AddString(captchaCode[i].ToString(), font.FontFamily, (int)font.Style, font.Size, charRect, format);
-
-            // Add some random rotation and translation
-            var matrix = new Matrix();
-            matrix.Translate(0, random.Next(-5, 5));
-            matrix.RotateAt(random.Next(-15, 15), new PointF(charRect.X + charRect.Width / 2, charRect.Y + charRect.Height / 2));
-            gPath.Transform(matrix);
-
-            graphics.FillPath(brush, gPath);
-        }
-
-        // Add noise
-        for (var i = 0; i < 100; i++)
-        {
-            var x = random.Next(width);
-            var y = random.Next(height);
-            image.SetPixel(x, y, Color.FromArgb(random.Next(0, 255), random.Next(0, 255), random.Next(0, 255)));
-        }
-
-        graphics.Flush();
-
-        using var ms = new MemoryStream();
-        image.Save(ms, ImageFormat.Png);
-
-        return (captchaCode, ms.ToArray());
+        
+        // Generate SVG-based CAPTCHA for Linux compatibility
+        var svg = GenerateSvgCaptcha(captchaCode, width, height);
+        var svgBytes = System.Text.Encoding.UTF8.GetBytes(svg);
+        
+        return (captchaCode, svgBytes);
     }
 
     private string GenerateRandomCode(int length)
     {
-        var random = new Random();
-        var result = new StringBuilder(length);
+        var result = new System.Text.StringBuilder(length);
         for (var i = 0; i < length; i++)
         {
-            result.Append(CaptchaChars[random.Next(CaptchaChars.Length)]);
+            result.Append(CaptchaChars[_random.Next(CaptchaChars.Length)]);
         }
         return result.ToString();
+    }
+
+    private string GenerateSvgCaptcha(string code, int width, int height)
+    {
+        var colors = new[] { "#FF0000", "#00AA00", "#0000FF", "#FF00FF", "#FFAA00", "#00AAFF" };
+        var svg = new System.Text.StringBuilder();
+        
+        svg.AppendLine($"<svg width=\"{width}\" height=\"{height}\" xmlns=\"http://www.w3.org/2000/svg\">");
+        svg.AppendLine($"<rect width=\"{width}\" height=\"{height}\" fill=\"#f8f8f8\"/>");
+        
+        // Add noise lines
+        for (int i = 0; i < 8; i++)
+        {
+            var x1 = _random.Next(width);
+            var y1 = _random.Next(height);
+            var x2 = _random.Next(width);
+            var y2 = _random.Next(height);
+            var color = colors[_random.Next(colors.Length)];
+            svg.AppendLine($"<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{color}\" stroke-width=\"1\" opacity=\"0.3\"/>");
+        }
+        
+        // Add characters with random positions and colors
+        var fontSize = height * 0.7; // Increase font size
+        var charWidth = width / (code.Length + 1);
+        
+        for (int i = 0; i < code.Length; i++)
+        {
+            var x = charWidth * (i + 1) + _random.Next(-3, 3);
+            var y = height / 2 + fontSize / 3 + _random.Next(-8, 8);
+            var rotation = _random.Next(-12, 12);
+            var color = colors[_random.Next(colors.Length)];
+            
+            svg.AppendLine($"<text x=\"{x}\" y=\"{y}\" font-family=\"Arial, sans-serif\" font-size=\"{fontSize}\" " +
+                          $"font-weight=\"bold\" fill=\"{color}\" text-anchor=\"middle\" " +
+                          $"transform=\"rotate({rotation} {x} {y})\">{code[i]}</text>");
+        }
+        
+        // Add noise dots
+        for (int i = 0; i < 50; i++)
+        {
+            var x = _random.Next(width);
+            var y = _random.Next(height);
+            var color = colors[_random.Next(colors.Length)];
+            svg.AppendLine($"<circle cx=\"{x}\" cy=\"{y}\" r=\"1\" fill=\"{color}\" opacity=\"0.5\"/>");
+        }
+        
+        svg.AppendLine("</svg>");
+        
+        return svg.ToString();
     }
 }

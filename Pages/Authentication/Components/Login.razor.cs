@@ -12,6 +12,7 @@ namespace SSOPortalX.Pages.Authentication.Components
     public partial class Login
     {
         private bool _show;
+        private bool _isLoading;
         public string _email { get; set; } = "";
         public string _password { get; set; } = "";
         public bool _remember { get; set; }
@@ -60,59 +61,91 @@ namespace SSOPortalX.Pages.Authentication.Components
 
         private async Task GenerateCaptcha()
         {
-            var (code, image) = CaptchaService.GenerateCaptchaImage(150, 50);
+            var (code, image) = CaptchaService.GenerateCaptchaImage(150, 65);
             await CookieStorage.SetAsync("CaptchaCode", code);
-            CaptchaImageUrl = $"data:image/png;base64,{Convert.ToBase64String(image)}";
+            // Handle SVG CAPTCHA (text-based)
+            var svgContent = System.Text.Encoding.UTF8.GetString(image);
+            CaptchaImageUrl = $"data:image/svg+xml;base64,{Convert.ToBase64String(image)}";
         }
 
         private async Task HandleLogin()
         {
+            _isLoading = true;
             _errorMessage = "";
-            var storedCode = await CookieStorage.GetAsync("CaptchaCode");
-
-            if (!string.Equals(storedCode, CaptchaInput, StringComparison.OrdinalIgnoreCase))
+            StateHasChanged();
+            
+            try
             {
-                _errorMessage = "Invalid CAPTCHA";
-                await GenerateCaptcha();
-                StateHasChanged();
-                return;
-            }
+                var storedCode = await CookieStorage.GetAsync("CaptchaCode");
 
-            var isAuthenticated = await UserService.ValidatePasswordAsync(_email, _password);
+                if (!string.Equals(storedCode, CaptchaInput, StringComparison.OrdinalIgnoreCase))
+                {
+                    _errorMessage = "Invalid CAPTCHA";
+                    await GenerateCaptcha();
+                    return;
+                }
+
+                var isAuthenticated = await UserService.ValidatePasswordAsync(_email, _password);
 
             if (isAuthenticated)
             {
                 var user = await UserService.GetUserByUsernameAsync(_email);
                 if (user != null)
                 {
-                    // Clear old tokens untuk user ini (optional - untuk keamanan)
-                    await SsoTokenService.ClearUserTokensAsync(user.Id);
-                    
-                    var appIds = await UserAppAccessService.GetAppIdsForUserAsync(user.Id);
-                    foreach (var appId in appIds)
-                    {
-                        var token = await SsoTokenService.GenerateTokenAsync(user.Id, appId);
-                        System.Console.WriteLine($"Generated token for user {user.Username} and app {appId}: {token.Token}");
-                    }
-
-                    // Store user session
+                    // Store user session immediately for faster login
                     await CookieStorage.SetAsync("CurrentUserId", user.Id.ToString());
                     await CookieStorage.SetAsync("CurrentUsername", user.Username);
                     await CookieStorage.SetAsync("CurrentUserRole", user.Role);
                     
+                    // Navigate first, then do background token generation
                     Navigation.NavigateTo("/", forceLoad: true);
+                    
+                    // Background token processing (non-blocking)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            // Clear old tokens untuk user ini (optional - untuk keamanan)
+                            await SsoTokenService.ClearUserTokensAsync(user.Id);
+                            
+                            var appIds = await UserAppAccessService.GetAppIdsForUserAsync(user.Id);
+                            
+                            // Generate tokens in parallel for better performance
+                            var tokenTasks = appIds.Select(async appId =>
+                            {
+                                var token = await SsoTokenService.GenerateTokenAsync(user.Id, appId);
+                                System.Console.WriteLine($"Generated token for user {user.Username} and app {appId}: {token.Token}");
+                            });
+                            
+                            await Task.WhenAll(tokenTasks);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Console.WriteLine($"Background token generation error: {ex.Message}");
+                        }
+                    });
                 }
                 else
                 {
                     _errorMessage = "An error occurred after login.";
                     await GenerateCaptcha();
-                    StateHasChanged();
                 }
             }
             else
             {
                 _errorMessage = "Invalid username or password.";
                 await GenerateCaptcha();
+            }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Login error: {ex.Message}";
+                await GenerateCaptcha();
+                StateHasChanged();
+            }
+            finally
+            {
+                _isLoading = false;
                 StateHasChanged();
             }
         }
