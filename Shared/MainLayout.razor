@@ -1,0 +1,137 @@
+﻿@inherits LayoutComponentBase
+@inject GlobalConfig GlobalConfig
+@inject NavHelper NavHelper
+@inject NavigationManager NavigationManager
+@using Masa.Blazor.Presets
+
+<PageTitle>@_pageTitle</PageTitle>
+<MApp>
+    <PPageTabsProvider>
+        <CascadingValue Value="GlobalConfig.Culture.Name" Name="CultureName">
+            <MAppBar Elevation=0 App Height="100" Class="default-app-bar mx-6">
+                <div class="default-app-bar__actions @PageModeClass">
+                    <Favorite />
+                    <MSpacer />
+                    <Search />
+                    <MIcon Size=20 Class="ml-5" Color="neutral-lighten-3" OnClick="() => _showSetting = true">mdi-cog-outline</MIcon>
+                    <Login />
+                </div>
+                <div class="default-app-bar__nav @PageModeClass">
+                    @if (_pageTab == PageModes.PageTab)
+                    {
+                        <PageTabs @ref="_pageTabs" SelfPatterns="@s_selfPatterns" />
+                    }
+                    else
+                    {
+                        <Breadcrumb />
+                    }
+                </div>
+            </MAppBar>
+
+            <Navigation />
+
+            <MMain Class="fill-lighten-1">
+                <div class="pa-6">
+                    @if (_pageTab == PageModes.PageTab)
+                    {
+                        <PPageContainer PageTabs="@_pageTabs?.PPageTabs" SelfPatterns="@s_selfPatterns">
+                            @Body
+                        </PPageContainer>
+                    }
+                    else
+                    {
+                        @Body
+                    }
+                </div>
+            </MMain>
+            <Settings @bind-PageModel="_pageTab" @bind-Show=_showSetting />
+        </CascadingValue>
+    </PPageTabsProvider>
+</MApp>
+
+@code {
+    [CascadingParameter]
+    private IPageTabsProvider? PageTabsProvider { get; set; }
+
+    private static readonly string[] s_selfPatterns =
+    {
+        "/app/todo"
+    };
+
+    private bool? _showSetting;
+
+    private string? _pageTab;
+
+    private PageTabs? _pageTabs;
+
+    private string PageModeClass => _pageTab == PageModes.PageTab ? "page-mode--tab" : "page-mode--breadcrumb";
+
+    private string _pageTitle = "SSO Portal";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (firstRender)
+        {
+            await GlobalConfig.InitFromStorage();
+            UpdatePageTitle();
+            NavigationManager.LocationChanged += OnLocationChanged;
+        }
+    }
+
+    void OnLanguageChanged(CultureInfo culture)
+    {
+        GlobalConfig.Culture = culture;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdatePageTitle();
+        StateHasChanged();
+    }
+
+    private void UpdatePageTitle()
+    {
+        try
+        {
+            var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri).TrimEnd('/');
+            if (!relative.StartsWith("/")) relative = "/" + relative;
+
+            static string Normalize(string? href)
+            {
+                href ??= string.Empty;
+                href = href.Trim();
+                if (!href.StartsWith("/")) href = "/" + href;
+                return href.TrimEnd('/');
+            }
+
+            var active = NavHelper.SameLevelNavs.FirstOrDefault(n =>
+                Normalize(n.Href).Equals(relative, StringComparison.OrdinalIgnoreCase));
+
+            _pageTitle = active?.Title ?? "SSO Portal";
+
+            // Update page tab title to reflect the active menu
+            var absolutePath = NavigationManager.GetAbsolutePath();
+            var activeHref = active?.Href ?? string.Empty;
+
+            // Try update by absolute path (pattern used by samples)
+            PageTabsProvider?.UpdateTabTitle(absolutePath, () => _pageTitle);
+            // Also try update by configured nav href to cover both matching strategies
+            if (!string.IsNullOrEmpty(activeHref))
+            {
+                PageTabsProvider?.UpdateTabTitle(activeHref, () => _pageTitle);
+            }
+        }
+        catch
+        {
+            _pageTitle = "SSO Portal";
+        }
+    }
+
+    public void Dispose()
+    {
+        try { NavigationManager.LocationChanged -= OnLocationChanged; } catch { }
+    }
+
+}

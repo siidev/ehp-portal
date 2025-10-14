@@ -1,0 +1,265 @@
+@page "/app/vendor/list"
+@inherits ProComponentBase
+@using SSOPortalX.Data.App.Vendor
+@using SSOPortalX.Data.App.Vendor.Dto
+@using SSOPortalX.Data.App.User
+@using SSOPortalX.Data.App.User.Dto
+@inject VendorService VendorService
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Vendor Management - SSO Portal</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <h1 class="text-h4 font-weight-bold">Vendor Management</h1>
+    <MButton Color="primary" OnClick="OpenAddDialog">
+        <MIcon Left>mdi-plus</MIcon>
+        Add Vendor
+    </MButton>
+</div>
+
+<MCard>
+    @if (_loading)
+    {
+        <div class="text-center pa-8">
+            <MProgressCircular Indeterminate Color="primary" />
+            <p class="mt-4">Loading vendors...</p>
+        </div>
+    }
+    else if (_vendors.Any())
+    {
+        <MDataTable Headers="_headers" Items="_vendors" TItem="VendorDto">
+            <HeaderColContent Context="header">
+                <span class="text-subtitle">@header.Text</span>
+            </HeaderColContent>
+            <ItemColContent Context="context">
+                @switch (context.Header.Value)
+                {
+                    case nameof(VendorDto.Name):
+                        @context.Item.Name
+                        break;
+                    case nameof(VendorDto.UserName):
+                        @context.Item.UserName
+                        break;
+                    case nameof(VendorDto.Phone):
+                        @context.Item.Phone
+                        break;
+                    case nameof(VendorDto.FullAddress):
+                        @context.Item.FullAddress
+                        break;
+                    case "Actions":
+                        <MButton Icon OnClick="() => ViewVendor(context.Item.Id)">
+                            <MIcon Small>mdi-eye</MIcon>
+                        </MButton>
+                        <MButton Icon OnClick="() => EditVendor(context.Item)">
+                            <MIcon Small>mdi-pencil</MIcon>
+                        </MButton>
+                        <MButton Icon OnClick="() => DeleteVendor(context.Item.Id)">
+                            <MIcon Small>mdi-delete</MIcon>
+                        </MButton>
+                        break;
+                }
+            </ItemColContent>
+        </MDataTable>
+    }
+    else
+    {
+        <MCard Class="pa-8 text-center">
+            <MCardText>
+                <MIcon Size="120" Color="grey lighten-2" Class="mb-4">mdi-account-group</MIcon>
+                <h2 class="text-h5 font-weight-medium mb-2">No Vendors Found</h2>
+                <p class="text-body-1 text--secondary mb-4">No vendors have been created yet.</p>
+                <MButton Color="primary" OnClick="OpenAddDialog">
+                    <MIcon Left>mdi-plus</MIcon>
+                    Add First Vendor
+                </MButton>
+            </MCardText>
+        </MCard>
+    }
+</MCard>
+
+<!-- Add/Edit Dialog -->
+<MDialog @bind-Value="_dialogVisible" MaxWidth="600">
+    <MCard>
+        <MCardTitle>
+            <span class="text-h5">@_dialogTitle</span>
+        </MCardTitle>
+        <MCardText>
+            <MForm @ref="_form" Model="_editedVendor">
+                <MTextField @bind-Value="_editedVendor.Name"
+                            Label="Vendor Name"
+                            Required
+                            Class="mb-4" />
+                
+                <MSelect @bind-Value="_editedVendor.UserId"
+                         Label="User"
+                         Items="_users"
+                         ItemText="u => u.UserName"
+                         ItemValue="u => int.Parse(u.Id)"
+                         Required
+                         Class="mb-4" />
+                
+                <MTextField @bind-Value="_editedVendor.Phone"
+                            Label="Phone"
+                            Class="mb-4" />
+                
+                <MTextField @bind-Value="_editedVendor.AddressStreet"
+                            Label="Street Address"
+                            Class="mb-4" />
+                
+                <MRow>
+                    <MCol Cols="6">
+                        <MTextField @bind-Value="_editedVendor.AddressCity"
+                                    Label="City"
+                                    Class="mb-4" />
+                    </MCol>
+                    <MCol Cols="6">
+                        <MTextField @bind-Value="_editedVendor.AddressPostalCode"
+                                    Label="Postal Code"
+                                    Class="mb-4" />
+                    </MCol>
+                </MRow>
+                
+                <MTextField @bind-Value="_editedVendor.AddressCountry"
+                            Label="Country"
+                            Class="mb-4" />
+            </MForm>
+        </MCardText>
+        <MCardActions>
+            <MSpacer />
+            <MButton Color="grey" OnClick="CloseDialog">Cancel</MButton>
+            <MButton Color="primary" OnClick="SaveVendor">Save</MButton>
+        </MCardActions>
+    </MCard>
+</MDialog>
+
+@code {
+    private List<VendorDto> _vendors = new();
+    private List<UserDto> _users = new();
+    private bool _loading = true;
+    private bool _dialogVisible;
+    private string _dialogTitle = "";
+    private CreateVendorDto _editedVendor = new();
+    private MForm? _form;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVendors();
+        await LoadUsers();
+    }
+
+    private readonly List<DataTableHeader<VendorDto>> _headers = new()
+    {
+        new() { Text = "Vendor Name", Value = nameof(VendorDto.Name) },
+        new() { Text = "User", Value = nameof(VendorDto.UserName) },
+        new() { Text = "Phone", Value = nameof(VendorDto.Phone) },
+        new() { Text = "Address", Value = nameof(VendorDto.FullAddress) },
+        new() { Text = "Actions", Value = "Actions", Sortable = false }
+    };
+
+    private async Task LoadVendors()
+    {
+        _loading = true;
+        try
+        {
+            var vendors = await VendorService.GetVendorsAsync();
+            _vendors = vendors.Select(v => new VendorDto(v)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading vendors: {ex.Message}");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            _users = await UserService.GetListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        _editedVendor = new CreateVendorDto();
+        _dialogTitle = "Add Vendor";
+        _dialogVisible = true;
+    }
+
+    private void EditVendor(VendorDto vendor)
+    {
+        _editedVendor = new CreateVendorDto
+        {
+            UserId = vendor.UserId,
+            Name = vendor.Name,
+            Phone = vendor.Phone,
+            AddressStreet = vendor.AddressStreet,
+            AddressCity = vendor.AddressCity,
+            AddressCountry = vendor.AddressCountry,
+            AddressPostalCode = vendor.AddressPostalCode
+        };
+        _dialogTitle = "Edit Vendor";
+        _dialogVisible = true;
+    }
+
+    private async Task SaveVendor()
+    {
+        if (_form?.Validate() == true)
+        {
+            try
+            {
+                var vendor = new SSOPortalX.Data.Models.Vendor
+                {
+                    UserId = _editedVendor.UserId,
+                    Name = _editedVendor.Name,
+                    Phone = _editedVendor.Phone,
+                    AddressStreet = _editedVendor.AddressStreet,
+                    AddressCity = _editedVendor.AddressCity,
+                    AddressCountry = _editedVendor.AddressCountry,
+                    AddressPostalCode = _editedVendor.AddressPostalCode
+                };
+
+                await VendorService.CreateVendorAsync(vendor);
+                await LoadVendors();
+                CloseDialog();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving vendor: {ex.Message}");
+            }
+        }
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editedVendor = new CreateVendorDto();
+    }
+
+    private void ViewVendor(int vendorId)
+    {
+        NavigationManager.NavigateTo($"/app/vendor/view/{vendorId}");
+    }
+
+    private async Task DeleteVendor(int vendorId)
+    {
+        try
+        {
+            await VendorService.DeleteVendorAsync(vendorId);
+            await LoadVendors();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting vendor: {ex.Message}");
+        }
+    }
+}

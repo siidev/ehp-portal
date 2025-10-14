@@ -1,0 +1,204 @@
+@page "/setup-sample-data"
+@using Microsoft.EntityFrameworkCore
+@inject SSOPortalX.Data.ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<h3>Setup Sample Data</h3>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <MAlert Type="AlertTypes.Success">@Message</MAlert>
+}
+
+<MButton Color="primary" OnClick="CreateSampleData">Create Sample Data</MButton>
+
+@code {
+    public string Message { get; set; } = "";
+
+    private async Task CreateSampleData()
+    {
+        try
+        {
+            // Create sample categories
+            var categories = new List<SSOPortalX.Data.Models.Category>();
+            
+            if (!DbContext.Categories.Any(c => c.Code == "PRODUCTIVITY"))
+            {
+                categories.Add(new SSOPortalX.Data.Models.Category
+                {
+                    Name = "Productivity",
+                    Code = "PRODUCTIVITY",
+                    Description = "Productivity and collaboration tools",
+                    DisplayOrder = 1,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!DbContext.Categories.Any(c => c.Code == "ANALYTICS"))
+            {
+                categories.Add(new SSOPortalX.Data.Models.Category
+                {
+                    Name = "Analytics",
+                    Code = "ANALYTICS", 
+                    Description = "Analytics and reporting tools",
+                    DisplayOrder = 2,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!DbContext.Categories.Any(c => c.Code == "HR"))
+            {
+                categories.Add(new SSOPortalX.Data.Models.Category
+                {
+                    Name = "Human Resources",
+                    Code = "HR",
+                    Description = "HR and employee management",
+                    DisplayOrder = 3,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (categories.Any())
+            {
+                DbContext.Categories.AddRange(categories);
+                await DbContext.SaveChangesAsync();
+            }
+
+            // Get category IDs
+            var productivityCat = await DbContext.Categories.FirstAsync(c => c.Code == "PRODUCTIVITY");
+            var analyticsCat = await DbContext.Categories.FirstAsync(c => c.Code == "ANALYTICS");
+            var hrCat = await DbContext.Categories.FirstAsync(c => c.Code == "HR");
+
+            // Create sample applications
+            var applications = new List<SSOPortalX.Data.Models.Application>();
+
+            if (!DbContext.Applications.Any(a => a.Code == "OFFICE365"))
+            {
+                applications.Add(new SSOPortalX.Data.Models.Application
+                {
+                    Name = "Microsoft Office 365",
+                    Code = "OFFICE365",
+                    Description = "Complete office suite with Word, Excel, PowerPoint, and more",
+                    WebhookUrl = "https://example.com/webhook/office365",
+                    WebhookSecret = "office365_secret_key",
+                    IconUrl = "mdi-microsoft-office",
+                    CategoryId = productivityCat.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!DbContext.Applications.Any(a => a.Code == "SLACK"))
+            {
+                applications.Add(new SSOPortalX.Data.Models.Application
+                {
+                    Name = "Slack",
+                    Code = "SLACK",
+                    Description = "Team communication and collaboration platform",
+                    WebhookUrl = "https://example.com/webhook/slack",
+                    WebhookSecret = "slack_secret_key",
+                    IconUrl = "mdi-slack",
+                    CategoryId = productivityCat.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!DbContext.Applications.Any(a => a.Code == "POWERBI"))
+            {
+                applications.Add(new SSOPortalX.Data.Models.Application
+                {
+                    Name = "Power BI",
+                    Code = "POWERBI",
+                    Description = "Business analytics and data visualization",
+                    WebhookUrl = "https://example.com/webhook/powerbi",
+                    WebhookSecret = "powerbi_secret_key",
+                    IconUrl = "mdi-chart-bar",
+                    CategoryId = analyticsCat.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!DbContext.Applications.Any(a => a.Code == "TABLEAU"))
+            {
+                applications.Add(new SSOPortalX.Data.Models.Application
+                {
+                    Name = "Tableau",
+                    Code = "TABLEAU",
+                    Description = "Advanced data visualization and analytics platform",
+                    WebhookUrl = "https://example.com/webhook/tableau",
+                    WebhookSecret = "tableau_secret_key",
+                    IconUrl = "mdi-chart-line-variant",
+                    CategoryId = analyticsCat.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (!DbContext.Applications.Any(a => a.Code == "WORKDAY"))
+            {
+                applications.Add(new SSOPortalX.Data.Models.Application
+                {
+                    Name = "Workday",
+                    Code = "WORKDAY",
+                    Description = "Human capital management and HR platform",
+                    WebhookUrl = "https://example.com/webhook/workday",
+                    WebhookSecret = "workday_secret_key",
+                    IconUrl = "mdi-account-tie",
+                    CategoryId = hrCat.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            if (applications.Any())
+            {
+                DbContext.Applications.AddRange(applications);
+                await DbContext.SaveChangesAsync();
+            }
+
+            // Grant access to admin user (ID = 1) for all applications
+            var adminUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+            if (adminUser != null)
+            {
+                var allAppIds = await DbContext.Applications.Select(a => a.Id).ToListAsync();
+                
+                foreach (var appId in allAppIds)
+                {
+                    if (!await DbContext.UserAppAccesses.AnyAsync(uaa => uaa.UserId == adminUser.Id && uaa.AppId == appId))
+                    {
+                        DbContext.UserAppAccesses.Add(new SSOPortalX.Data.Models.UserAppAccess
+                        {
+                            UserId = adminUser.Id,
+                            AppId = appId,
+                            GrantedBy = adminUser.Id,
+                            GrantedAt = DateTime.UtcNow,
+                            Notes = "Default admin access"
+                        });
+                    }
+                }
+                await DbContext.SaveChangesAsync();
+            }
+
+            Message = "Sample data created successfully! You can now see applications on the dashboard.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Error creating sample data: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,378 @@
+﻿@page "/pages/others/account-settings"
+@inherits ProComponentBase
+@inject SSOPortalX.Data.Others.AccountSettings.AccountSettingService AccountSettingService
+@using SSOPortalX.Data.Others.AccountSettings.Dto
+
+<MRow>
+    <MCol Md=3 Sm=12>
+        <MList>
+            <MListItemGroup Mandatory @bind-Value="_current" ActiveClass="deep-purple white--text elevation-6">
+                <MListItem>
+                    <MListItemIcon><MIcon>fa:far fa-user</MIcon></MListItemIcon>
+                    <MListItemContent>
+                        <MListItemTitle>General</MListItemTitle>
+                    </MListItemContent>
+                </MListItem>
+                <MListItem>
+                    <MListItemIcon><MIcon>fa:fas fa-lock</MIcon></MListItemIcon>
+                    <MListItemContent>
+                        <MListItemTitle>Change Password</MListItemTitle>
+                    </MListItemContent>
+                </MListItem>
+                <MListItem>
+                    <MListItemIcon><MIcon>fa:fas fa-info-circle</MIcon></MListItemIcon>
+                    <MListItemContent>
+                        <MListItemTitle>Information</MListItemTitle>
+                    </MListItemContent>
+                </MListItem>
+            </MListItemGroup>
+        </MList>
+    </MCol>
+    <MCol Md=9 Sm=12>
+        <MCard Style="@(_current == 0 ?"":"display:none")">
+            <MCardTitle>
+                <MList Style="width:100%">
+                    <div class="d-flex">
+                        <MAvatar Size=90 Tile>
+                            <MImage Src="/img/avatar/7.svg"></MImage>
+                        </MAvatar>
+            
+                    </div>
+                    <MRow Class="mt-2">
+                        <MCol Md=6 Sm=12>
+                            <MTextField @bind-Value="_account.UserName" Label="Username" Placeholder="Username" Outlined TValue="string" />
+                        </MCol>
+                        <MCol Md=6 Sm=12>
+                            <MTextField @bind-Value="_account.Name" Label="Name" Placeholder="Name" Outlined TValue="string" />
+                        </MCol>
+                    </MRow>
+                    <MRow Class="mt-n6">
+                        <MCol Md=6 Sm=12>
+                            <MTextField @bind-Value="_account.Email" Label="E-mail" Placeholder="E-mai" Outlined TValue="string" />
+                        </MCol>
+                        <MCol Md=6 Sm=12>
+                            <MTextField @bind-Value="_account.Company" Label="Company" Placeholder="Company" Outlined TValue="string" />
+                        </MCol>
+                    </MRow>
+                    @if (_showMessage)
+                    {
+                        <MAlert Color="@(_isSuccessMessage ? "success" : "error")" Class="mt-3" 
+                                Style="@(_isSuccessMessage ? "color: #2e7d32 !important;" : "color: #c62828 !important;")">
+                            @_message
+                        </MAlert>
+                    }
+                    
+                    <MAlert Color="orange lighten-5" Class="orange--text">
+                        Your email is not confirmed. Please check your inbox.
+                        <MDivider Class="orange-border"></MDivider>
+                        Resend confirmation
+                    </MAlert>
+                    <MItem>
+                        <MButton Color="deep-purple white--text font-weight-black" OnClick="SaveAccount" Loading="_isSavingAccount"> Save changes </MButton>
+                        <MButton Outlined Class="ml-2 grey--text font-weight-black" OnClick="ResetAccount"> Reset </MButton>
+                    </MItem>
+                </MList>
+            </MCardTitle>
+        </MCard>
+        <MCard Style="@(_current == 1 ?"":"display:none")">
+            <MCardText>
+                <MRow>
+                    <MCol Md=6 Sm=12>
+                        <MTextField @bind-Value="_oldPassword" Label="Old Password" Outlined Placeholder="Old Password" TValue="string" Type="@(_show1 ? "text" : "password")" AppendIcon="@(_show1 ? "mdi-eye" : "mdi-eye-off")" OnAppendClick="() => _show1 = !_show1"></MTextField>
+                    </MCol>
+                    <MCol Md=6 Sm=0></MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MTextField @bind-Value="_newPassword" Label="New Password" Outlined Placeholder="New Password" TValue="string" Type="@(_show2 ? "text" : "password")" AppendIcon="@(_show2 ? "mdi-eye" : "mdi-eye-off")" OnAppendClick="() => _show2 = !_show2"></MTextField>
+                    </MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MTextField @bind-Value="_retypeNewPassword" Label="Retype New Password" Outlined Placeholder="Retype New Password" TValue="string" Type="@(_show3 ? "text" : "password")" AppendIcon="@(_show3 ? "mdi-eye" : "mdi-eye-off")" OnAppendClick="() => _show3 = !_show3"></MTextField>
+                    </MCol>
+                </MRow>
+                @if (_showMessage)
+                {
+                    <MAlert Color="@(_isSuccessMessage ? "success" : "error")" Class="mt-3" 
+                            Style="@(_isSuccessMessage ? "color: #2e7d32 !important;" : "color: #c62828 !important;")">
+                        @_message
+                    </MAlert>
+                }
+                <MItem>
+                    <MButton Color="deep-purple white--text font-weight-black" OnClick="SavePasswordChange" Loading="_isSavingPassword" Disabled="_isSavingPassword">
+                        @if (_isSavingPassword)
+                        {
+                            <MProgressCircular Size="20" Width="2" Color="white" Indeterminate Class="mr-2"></MProgressCircular>
+                            <span>Changing...</span>
+                        }
+                        else
+                        {
+                            <span>Save changes</span>
+                        }
+                    </MButton>
+                    <MButton Outlined Class="ml-2 grey--text font-weight-black" OnClick="ResetPassoword"> Reset </MButton>
+                </MItem>
+            </MCardText>
+        </MCard>
+        <MCard Style="@(_current == 2 ?"":"display:none")">
+            <MCardText>
+                <MRow>
+                    <MCol Sm=12>
+                        <MTextField @bind-Value="_vendorInformation.Name" Label="Company/Vendor Name" Outlined Placeholder="Enter your company or vendor name..."></MTextField>
+                    </MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MTextField @bind-Value="_vendorInformation.Phone" Label="Phone" Placeholder="Phone Number" Outlined TValue="string" />
+                    </MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MTextField @bind-Value="_vendorInformation.AddressStreet" Label="Street Address" Placeholder="Street Address" Outlined TValue="string" />
+                    </MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MTextField @bind-Value="_vendorInformation.AddressCity" Label="City" Placeholder="City" Outlined TValue="string" />
+                    </MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MSelect Items=_items ItemValue="u => u.Name" Label="Country" ItemText="u => u.Name" Outlined @bind-Value="_vendorInformation.AddressCountry"></MSelect>
+                    </MCol>
+                    <MCol Md=6 Sm=12 Class="mt-n6">
+                        <MTextField @bind-Value="_vendorInformation.AddressPostalCode" Label="Postal Code" Placeholder="Postal Code" Outlined TValue="string" />
+                    </MCol>
+                </MRow>
+                <MItem>
+                    <MButton Color="deep-purple white--text font-weight-black" OnClick="SaveVendorInformation" Loading="_isSavingVendor" Disabled="_isSavingVendor">
+                        @if (_isSavingVendor)
+                        {
+                            <MProgressCircular Size="20" Width="2" Color="white" Indeterminate Class="mr-2"></MProgressCircular>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save changes</span>
+                        }
+                    </MButton>
+                    <MButton Outlined Class="ml-2 grey--text font-weight-black" OnClick="ResetVendorInformation"> Reset </MButton>
+                </MItem>
+            </MCardText>
+        </MCard>
+    </MCol>
+</MRow>
+
+@code {
+    private StringNumber _current = 0;
+    private AccountDto _account = new("", "", "", "");
+    private bool _show1;
+    private bool _show2;
+    private bool _show3;
+    private bool _isSavingAccount = false;
+    private bool _isSavingVendor = false;
+    private bool _isSavingPassword = false;
+    private string _message = "";
+    private bool _showMessage = false;
+    private bool _isSuccessMessage = false;
+    private List<CountryDto> _items = AccountSettingService.GetCountryList();
+    private InformationDto _information = AccountSettingService.GetInformation();
+    private VendorInformationDto _vendorInformation = new();
+
+    private string _oldPassword = "";
+    private string _newPassword = "";
+    private string _retypeNewPassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAccountData();
+        await LoadVendorData();
+    }
+
+    private async Task LoadAccountData()
+    {
+        try
+        {
+            _account = await AccountSettingService.GetAccountAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading account data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadVendorData()
+    {
+        try
+        {
+            _vendorInformation = await AccountSettingService.GetVendorInformationAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading vendor data: {ex.Message}");
+        }
+    }
+
+    private void ResetPassoword()
+    {
+        _oldPassword = "";
+        _newPassword = "";
+        _retypeNewPassword = "";
+    }
+
+    private async Task SaveAccount()
+    {
+        if (string.IsNullOrWhiteSpace(_account.UserName) || string.IsNullOrWhiteSpace(_account.Name) || string.IsNullOrWhiteSpace(_account.Email))
+        {
+            await ShowMessage("Please fill in all required fields.", false);
+            return;
+        }
+
+        _isSavingAccount = true;
+        try
+        {
+            Console.WriteLine("Calling UpdateAccountAsync...");
+            var result = await AccountSettingService.UpdateAccountAsync(_account);
+            Console.WriteLine($"UpdateAccountAsync result: {result}");
+            
+            if (result)
+            {
+                Console.WriteLine("Showing success message...");
+                await ShowMessage("Account updated successfully!", true);
+                await LoadAccountData(); // Refresh data
+            }
+            else
+            {
+                Console.WriteLine("Showing error message...");
+                await ShowMessage("Failed to save account settings. Please try again.", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving account: {ex.Message}");
+            await ShowMessage("An error occurred while saving. Please try again.", false);
+        }
+        finally
+        {
+            _isSavingAccount = false;
+        }
+    }
+
+    private async Task ShowMessage(string message, bool isSuccess)
+    {
+        Console.WriteLine($"ShowMessage called: {message}, isSuccess: {isSuccess}");
+        _message = message;
+        _isSuccessMessage = isSuccess;
+        _showMessage = true;
+        await InvokeAsync(StateHasChanged);
+
+        // Auto hide message after 5 seconds
+        _ = Task.Delay(5000).ContinueWith(async _ => 
+        {
+            _showMessage = false;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private async Task ResetAccount()
+    {
+        await LoadAccountData();
+    }
+
+    private async Task SaveVendorInformation()
+    {
+        if (string.IsNullOrWhiteSpace(_vendorInformation.Name))
+        {
+            await ShowMessage("Please enter a company/vendor name.", false);
+            return;
+        }
+
+        _isSavingVendor = true;
+        try
+        {
+            Console.WriteLine("Calling UpdateVendorInformationAsync...");
+            var result = await AccountSettingService.UpdateVendorInformationAsync(_vendorInformation);
+            Console.WriteLine($"UpdateVendorInformationAsync result: {result}");
+            
+            if (result)
+            {
+                Console.WriteLine("Showing success message...");
+                await ShowMessage("Vendor information updated successfully!", true);
+                await LoadVendorData(); // Refresh data
+                await LoadAccountData(); // Refresh account to update company name
+            }
+            else
+            {
+                Console.WriteLine("Showing error message...");
+                await ShowMessage("Failed to save vendor information. Please try again.", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving vendor information: {ex.Message}");
+            await ShowMessage("An error occurred while saving. Please try again.", false);
+        }
+        finally
+        {
+            _isSavingVendor = false;
+        }
+    }
+
+    private async Task ResetVendorInformation()
+    {
+        await LoadVendorData();
+    }
+
+    private async Task SavePasswordChange()
+    {
+        // Validate input
+        if (string.IsNullOrWhiteSpace(_oldPassword))
+        {
+            await ShowMessage("Please enter your old password.", false);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_newPassword))
+        {
+            await ShowMessage("Please enter a new password.", false);
+            return;
+        }
+
+        if (_newPassword != _retypeNewPassword)
+        {
+            await ShowMessage("New passwords do not match.", false);
+            return;
+        }
+
+        if (_newPassword.Length < 6)
+        {
+            await ShowMessage("New password must be at least 6 characters long.", false);
+            return;
+        }
+
+        _isSavingPassword = true;
+        try
+        {
+            Console.WriteLine("Calling ChangePasswordAsync...");
+            var result = await AccountSettingService.ChangePasswordAsync(_oldPassword, _newPassword);
+            Console.WriteLine($"ChangePasswordAsync result: {result}");
+            
+            if (result)
+            {
+                Console.WriteLine("Password changed successfully");
+                await ShowMessage("Password changed successfully!", true);
+                ResetPassoword(); // Clear password fields
+            }
+            else
+            {
+                Console.WriteLine("Failed to change password - old password incorrect");
+                await ShowMessage("Old password is incorrect. Please try again.", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error changing password: {ex.Message}");
+            await ShowMessage("An error occurred while changing password. Please try again.", false);
+        }
+        finally
+        {
+            _isSavingPassword = false;
+        }
+    }
+
+    private void ResetInformation()
+    {
+        _information = AccountSettingService.GetInformation();
+    }
+}

@@ -1,0 +1,404 @@
+@page "/app/user/access"
+@inherits ProComponentBase
+@inject SSOPortalX.Data.App.User.UserService UserService
+@inject SSOPortalX.Data.App.Application.ApplicationService ApplicationService
+@inject SSOPortalX.Data.App.UserAppAccess.UserAppAccessService UserAppAccessService
+@inject SSOPortalX.CookieStorage CookieStorage
+
+<PageTitle>User Access Management</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <h1 class="text-h4 font-weight-bold mb-2">User Access Management</h1>
+        <p class="text-body-1 text--secondary">Manage which applications each user can access</p>
+    </div>
+    <MButton Color="primary" OnClick="RefreshData">
+        <MIcon Left>mdi-refresh</MIcon>
+        Refresh
+    </MButton>
+</div>
+
+@if (_loading)
+{
+    <div class="text-center pa-8">
+        <MProgressCircular Indeterminate Color="primary" Size="40" />
+        <p class="mt-4">Loading user access data...</p>
+    </div>
+}
+else
+{
+    <MCard>
+        <MCardTitle Class="pa-6">
+            <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                <div class="d-flex align-center">
+                    <MIcon Class="mr-2" Color="primary">mdi-account-key</MIcon>
+                    <span>User Application Access Matrix</span>
+                </div>
+                <div  style="width: 280px;">
+                    <MTextField @bind-Value="_searchTerm" 
+                                @bind-Value:event="oninput"
+                                Color="primary" 
+                                Class="rounded-2" 
+                                HideDetails="@("auto")" 
+                                Flat 
+                                Dense 
+                                Solo 
+                                BackgroundColor="fill-lighten-1" 
+                                Placeholder="Search by user name or email...">
+                        <PrependInnerContent>
+                            <MIcon Size="16" Class="mr-2 neutral-lighten-1--text">mdi-magnify</MIcon>
+                        </PrependInnerContent>
+                    </MTextField>
+                </div>
+            </div>
+        </MCardTitle>
+        
+        <MDataTable Headers="_headers" 
+                    Items="GetFilteredUserAccessData()" 
+                    TItem="UserAccessRow"
+                    Class="elevation-0"
+                    ItemsPerPage="10">
+            <HeaderColContent Context="header">
+                <span class="text-subtitle-2 font-weight-bold">@header.Text</span>
+            </HeaderColContent>
+            
+            <ItemColContent Context="context">
+                @switch (context.Header.Value)
+                {
+                    case nameof(UserAccessRow.UserName):
+                        <div class="d-flex align-center">
+                            <MAvatar Size="32" Class="mr-3">
+                                <MIcon>mdi-account</MIcon>
+                            </MAvatar>
+                            <div>
+                                <div class="text-subtitle-2">@context.Item.UserName</div>
+                                <div class="text-caption text--secondary">@context.Item.UserEmail</div>
+                            </div>
+                        </div>
+                        break;
+                        
+                    case nameof(UserAccessRow.Role):
+                        <MChip Small Color="@GetRoleColor(context.Item.Role)">
+                            @context.Item.Role
+                        </MChip>
+                        break;
+                        
+                    case nameof(UserAccessRow.ApplicationsCount):
+                        <MChip Small Outlined Color="info">
+                            @context.Item.ApplicationsCount apps
+                        </MChip>
+                        break;
+                        
+                    case nameof(UserAccessRow.GrantedAt):
+                        <span class="text-body-2">
+                            @(context.Item.GrantedAt?.ToString("MMM dd, yyyy") ?? "Never")
+                        </span>
+                        break;
+                        
+                    case "Actions":
+                        <div class="d-flex ga-2">
+                            <MButton Size="small" 
+                                     Color="primary" 
+                                     Outlined
+                                     OnClick="() => ManageAccess(context.Item)">
+                                <MIcon Small Left>mdi-key</MIcon>
+                                Manage Access
+                            </MButton>
+                        </div>
+                        break;
+                }
+            </ItemColContent>
+        </MDataTable>
+    </MCard>
+}
+
+<!-- User Access Management Dialog -->
+<MDialog @bind-Value="_dialogVisible" MaxWidth="800">
+    <MCard v-if="_selectedUser != null">
+        <MCardTitle>
+            <div class="d-flex align-center">
+                <MIcon Class="mr-2">mdi-account-key</MIcon>
+                <span>Manage Access for @_selectedUser?.UserName</span>
+            </div>
+        </MCardTitle>
+        
+        <MCardText Class="pa-6">
+            <h4 class="mb-4">Manage Application Access:</h4>
+            
+            <MRow>
+                <MCol Cols="12" Md="6" Class="mb-4">
+                    <MCard Outlined>
+                        <MCardTitle Class="pa-4">
+                            <MIcon Class="mr-2" Color="success">mdi-plus-circle</MIcon>
+                            Available Applications
+                        </MCardTitle>
+                        <MCardText Class="pa-4" style="max-height: 300px; overflow-y: auto;">
+                            @if (_availableApplications?.Any() == true)
+                            {
+                                @foreach (var app in _availableApplications)
+                                {
+                                    <div class="d-flex align-center justify-space-between pa-2 hover-item" style="border-bottom: 1px solid #eee;">
+                                        <div class="d-flex align-center">
+                                            @if (IsIconName(app.IconUrl))
+                                            {
+                                                <MIcon Class="mr-3" Small>@GetFallbackIcon(app.IconUrl)</MIcon>
+                                            }
+                                            else
+                                            {
+                                                <MAvatar Size="24" Class="mr-3">
+                                                    <MImage Src="@app.IconUrl" Alt="@app.Name" Style="object-fit: contain;" />
+                                                </MAvatar>
+                                            }
+                                            <div>
+                                                <div class="text-body-2 font-weight-medium">@app.Name</div>
+                                                <div class="text-caption text--secondary">@app.Code</div>
+                                            </div>
+                                        </div>
+                                        <MButton Icon Small Color="success" OnClick="() => GrantAccess(app)">
+                                            <MIcon>mdi-arrow-right</MIcon>
+                                        </MButton>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center pa-4">
+                                    <MIcon Large Color="grey">mdi-inbox</MIcon>
+                                    <div class="text-body-2 text--secondary mt-2">No available applications</div>
+                                </div>
+                            }
+                        </MCardText>
+                    </MCard>
+                </MCol>
+                
+                <MCol Cols="12" Md="6" Class="mb-4">
+                    <MCard Outlined>
+                        <MCardTitle Class="pa-4">
+                            <MIcon Class="mr-2" Color="primary">mdi-check-circle</MIcon>
+                            Granted Applications
+                        </MCardTitle>
+                        <MCardText Class="pa-4" style="max-height: 300px; overflow-y: auto;">
+                            @if (_grantedApplications?.Any() == true)
+                            {
+                                @foreach (var app in _grantedApplications)
+                                {
+                                    <div class="d-flex align-center justify-space-between pa-2 hover-item" style="border-bottom: 1px solid #eee;">
+                                        <div class="d-flex align-center">
+                                            @if (IsIconName(app.IconUrl))
+                                            {
+                                                <MIcon Class="mr-3" Small>@GetFallbackIcon(app.IconUrl)</MIcon>
+                                            }
+                                            else
+                                            {
+                                                <MAvatar Size="24" Class="mr-3">
+                                                    <MImage Src="@app.IconUrl" Alt="@app.Name" Style="object-fit: contain;" />
+                                                </MAvatar>
+                                            }
+                                            <div>
+                                                <div class="text-body-2 font-weight-medium">@app.Name</div>
+                                                <div class="text-caption text--secondary">@app.Code</div>
+                                            </div>
+                                        </div>
+                                        <MButton Icon Small Color="error" OnClick="() => RevokeAccess(app)">
+                                            <MIcon>mdi-arrow-left</MIcon>
+                                        </MButton>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center pa-4">
+                                    <MIcon Large Color="grey">mdi-inbox</MIcon>
+                                    <div class="text-body-2 text--secondary mt-2">No granted applications</div>
+                                </div>
+                            }
+                        </MCardText>
+                    </MCard>
+                </MCol>
+            </MRow>
+        </MCardText>
+        
+        <MCardActions>
+            <MSpacer />
+            <MButton OnClick="CloseDialog">Cancel</MButton>
+            <MButton Color="primary" OnClick="SaveAccess">Save Changes</MButton>
+        </MCardActions>
+    </MCard>
+</MDialog>
+
+@code {
+    private bool _loading = true;
+    private bool _dialogVisible = false;
+    private string _searchTerm = "";
+    
+    private List<UserAccessRow> _userAccessData = new();
+    private List<SSOPortalX.Data.Models.Application>? _allApplications;
+    private UserAccessRow? _selectedUser;
+    
+    // Dual dropdown properties
+    private List<SSOPortalX.Data.Models.Application> _availableApplications = new();
+    private List<SSOPortalX.Data.Models.Application> _grantedApplications = new();
+    private List<SSOPortalX.Data.Models.Application> _availableSelections = new();
+    private List<SSOPortalX.Data.Models.Application> _grantedSelections = new();
+
+    private readonly List<DataTableHeader<UserAccessRow>> _headers = new()
+    {
+        new() { Text = "User", Value = nameof(UserAccessRow.UserName), Sortable = true },
+        new() { Text = "Role", Value = nameof(UserAccessRow.Role), Sortable = true },
+        new() { Text = "Applications", Value = nameof(UserAccessRow.ApplicationsCount), Sortable = true },
+        new() { Text = "Granted At", Value = nameof(UserAccessRow.GrantedAt), Sortable = true },
+        new() { Text = "Actions", Value = "Actions", Sortable = false }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var users = await UserService.GetListAsync();
+            _allApplications = await ApplicationService.GetApplicationsAsync();
+            
+            _userAccessData = new List<UserAccessRow>();
+            
+            foreach (var user in users)
+            {
+                if (int.TryParse(user.Id, out int userId))
+                {
+                    var appIds = await UserAppAccessService.GetAppIdsForUserAsync(userId);
+                    var grantedAt = await UserAppAccessService.GetEarliestGrantedAtForUserAsync(userId);
+                    
+                    _userAccessData.Add(new UserAccessRow
+                    {
+                        UserId = userId,
+                        UserName = user.FullName,
+                        UserEmail = user.Email ?? "",
+                        Role = user.Role,
+                        ApplicationsCount = appIds.Count,
+                        GrantedAt = grantedAt
+                    });
+                }
+            }
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    private List<UserAccessRow> GetFilteredUserAccessData()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            return _userAccessData;
+        }
+
+        return _userAccessData.Where(user => 
+            user.UserName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            user.UserEmail.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            user.Role.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)
+        ).ToList();
+    }
+
+    private async Task ManageAccess(UserAccessRow user)
+    {
+        _selectedUser = user;
+        
+        // Load current user access
+        var currentAppIds = await UserAppAccessService.GetAppIdsForUserAsync(user.UserId);
+        
+        // Initialize dual lists
+        if (_allApplications != null)
+        {
+            _grantedApplications = _allApplications.Where(app => currentAppIds.Contains(app.Id)).ToList();
+            _availableApplications = _allApplications.Where(app => !currentAppIds.Contains(app.Id)).ToList();
+        }
+        
+        // Clear selections
+        _availableSelections = new List<SSOPortalX.Data.Models.Application>();
+        _grantedSelections = new List<SSOPortalX.Data.Models.Application>();
+        
+        _dialogVisible = true;
+    }
+
+    private async Task SaveAccess()
+    {
+        if (_selectedUser != null)
+        {
+            var grantedAppIds = _grantedApplications.Select(app => app.Id).ToList();
+            // get current admin id from cookie
+            var currentUserIdStr = await CookieStorage.GetAsync("CurrentUserId");
+            int? adminId = int.TryParse(currentUserIdStr, out var parsed) ? parsed : null;
+            await UserAppAccessService.UpdateUserAccessAsync(_selectedUser.UserId, grantedAppIds, adminId, "Updated via User Access Management");
+            
+            // Refresh data
+            await LoadData();
+            
+            CloseDialog();
+        }
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _selectedUser = null;
+        _availableApplications.Clear();
+        _grantedApplications.Clear();
+        _availableSelections.Clear();
+        _grantedSelections.Clear();
+    }
+
+    private void GrantAccess(SSOPortalX.Data.Models.Application app)
+    {
+        if (_availableApplications.Contains(app))
+        {
+            _availableApplications.Remove(app);
+            _grantedApplications.Add(app);
+            StateHasChanged();
+        }
+    }
+
+    private void RevokeAccess(SSOPortalX.Data.Models.Application app)
+    {
+        if (_grantedApplications.Contains(app))
+        {
+            _grantedApplications.Remove(app);
+            _availableApplications.Add(app);
+            StateHasChanged();
+        }
+    }
+
+    private string GetRoleColor(string role)
+    {
+        return role.ToLower() switch
+        {
+            "admin" => "error",
+            "editor" => "warning",
+            "author" => "info",
+            "maintainer" => "success",
+            _ => "grey"
+        };
+    }
+
+    public class UserAccessRow
+    {
+        public int UserId { get; set; }
+        public string UserName { get; set; } = "";
+        public string UserEmail { get; set; } = "";
+        public string Role { get; set; } = "";
+        public int ApplicationsCount { get; set; }
+        public DateTime? GrantedAt { get; set; }
+    }
+}

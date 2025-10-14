@@ -1,0 +1,193 @@
+@page "/app/vendor/edit/{Id:int}"
+@inherits ProComponentBase
+@using SSOPortalX.Data.App.Vendor
+@using SSOPortalX.Data.App.Vendor.Dto
+@using SSOPortalX.Data.App.User
+@inject VendorService VendorService
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit Vendor - SSO Portal</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <h1 class="text-h4 font-weight-bold">Edit Vendor</h1>
+    <MButton Color="grey" OnClick="@(() => NavigationManager.NavigateTo("/app/vendor/list"))">
+        <MIcon Left>mdi-arrow-left</MIcon>
+        Back to List
+    </MButton>
+</div>
+
+@if (_vendor != null)
+{
+    <MRow>
+        <MCol Cols="12" Md="8">
+            <MCard>
+                <MCardTitle>
+                    <span class="text-h5">Vendor Information</span>
+                </MCardTitle>
+                <MCardText>
+                    <MForm @ref="_form" Model="_vendor">
+                        <MTextField @bind-Value="_vendor.Name"
+                                    Label="Vendor Name"
+                                    Required
+                                    Class="mb-4" />
+                        
+                        <MSelect @bind-Value="_vendor.UserId"
+                                 Label="User"
+                                 Items="_users"
+                                 ItemText="u => u.UserName"
+                                 ItemValue="u => int.Parse(u.Id)"
+                                 Required
+                                 Class="mb-4" />
+                        
+                        <MTextField @bind-Value="_vendor.Phone"
+                                    Label="Phone"
+                                    Class="mb-4" />
+                        
+                        <MTextField @bind-Value="_vendor.AddressStreet"
+                                    Label="Street Address"
+                                    Class="mb-4" />
+                        
+                        <MRow>
+                            <MCol Cols="6">
+                                <MTextField @bind-Value="_vendor.AddressCity"
+                                            Label="City"
+                                            Class="mb-4" />
+                            </MCol>
+                            <MCol Cols="6">
+                                <MTextField @bind-Value="_vendor.AddressPostalCode"
+                                            Label="Postal Code"
+                                            Class="mb-4" />
+                            </MCol>
+                        </MRow>
+                        
+                        <MTextField @bind-Value="_vendor.AddressCountry"
+                                    Label="Country"
+                                    Class="mb-4" />
+                    </MForm>
+                </MCardText>
+                <MCardActions>
+                    <MSpacer />
+                    <MButton Color="grey" OnClick="@(() => NavigationManager.NavigateTo("/app/vendor/list"))">
+                        Cancel
+                    </MButton>
+                    <MButton Color="primary" OnClick="SaveVendor">
+                        Save Changes
+                    </MButton>
+                </MCardActions>
+            </MCard>
+        </MCol>
+        
+        <MCol Cols="12" Md="4">
+            <MCard>
+                <MCardTitle>
+                    <span class="text-h6">Vendor Details</span>
+                </MCardTitle>
+                <MCardText>
+                    <MList>
+                        <MListItem>
+                            <MListItemContent>
+                                <MListItemTitle>Created</MListItemTitle>
+                                <MListItemSubtitle>@_vendor.CreatedAt.ToString("dd MMMM yyyy HH:mm")</MListItemSubtitle>
+                            </MListItemContent>
+                        </MListItem>
+                        
+                        <MListItem>
+                            <MListItemContent>
+                                <MListItemTitle>Last Updated</MListItemTitle>
+                                <MListItemSubtitle>@_vendor.UpdatedAt.ToString("dd MMMM yyyy HH:mm")</MListItemSubtitle>
+                            </MListItemContent>
+                        </MListItem>
+                    </MList>
+                </MCardText>
+            </MCard>
+        </MCol>
+    </MRow>
+}
+else
+{
+    <MCard Class="pa-8 text-center">
+        <MCardText>
+            <MIcon Size="120" Color="grey lighten-2" Class="mb-4">mdi-account-question</MIcon>
+            <h2 class="text-h5 font-weight-medium mb-2">Vendor Not Found</h2>
+            <p class="text-body-1 text--secondary mb-4">The requested vendor could not be found.</p>
+            <MButton Color="primary" OnClick="@(() => NavigationManager.NavigateTo("/app/vendor/list"))">
+                <MIcon Left>mdi-arrow-left</MIcon>
+                Back to Vendor List
+            </MButton>
+        </MCardText>
+    </MCard>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private VendorDto? _vendor;
+    private List<UserDto> _users = new();
+    private MForm? _form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVendor();
+        await LoadUsers();
+    }
+
+    private async Task LoadVendor()
+    {
+        try
+        {
+            var vendor = await VendorService.GetVendorByIdAsync(Id);
+            if (vendor != null)
+            {
+                _vendor = new VendorDto(vendor);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading vendor: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            _users = await UserService.GetListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+    }
+
+    private async Task SaveVendor()
+    {
+        if (_form?.Validate() == true && _vendor != null)
+        {
+            try
+            {
+                var vendor = new SSOPortalX.Data.Models.Vendor
+                {
+                    Id = _vendor.Id,
+                    UserId = _vendor.UserId,
+                    Name = _vendor.Name,
+                    Phone = _vendor.Phone,
+                    AddressStreet = _vendor.AddressStreet,
+                    AddressCity = _vendor.AddressCity,
+                    AddressCountry = _vendor.AddressCountry,
+                    AddressPostalCode = _vendor.AddressPostalCode,
+                    CreatedAt = _vendor.CreatedAt,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await VendorService.UpdateVendorAsync(vendor);
+                NavigationManager.NavigateTo($"/app/vendor/view/{_vendor.Id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving vendor: {ex.Message}");
+            }
+        }
+    }
+}

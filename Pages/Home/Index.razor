@@ -1,0 +1,186 @@
+@page "/"
+@inherits ProComponentBase
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject CookieStorage CookieStorage
+@inject SSOPortalX.Data.Sso.SsoTokenService SsoTokenService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>My Applications - SSO Portal</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <h1 class="text-h4 font-weight-bold">My Applications</h1>
+    @if (!_appsByCat.Any())
+    {
+        <a href="/setup-sample-data">
+            <MButton Color="primary" Variant="text">
+                <MIcon Left>mdi-plus</MIcon>
+                Setup Sample Data
+            </MButton>
+        </a>
+    }
+</div>
+
+@if (_appsByCat.Any())
+{
+    @foreach (var categoryGroup in _appsByCat)
+    {
+        <div class="mb-8">
+            <div class="d-flex align-center mb-4">
+                <MIcon Class="mr-2" Color="primary">mdi-folder-multiple</MIcon>
+                <h3 class="text-h5 font-weight-medium">@categoryGroup.Key</h3>
+                <MChip Class="ml-2" Small Color="primary" Outlined>
+                    @categoryGroup.Count() @(categoryGroup.Count() == 1 ? "app" : "apps")
+                </MChip>
+            </div>
+            
+            <MRow>
+                @foreach (var app in categoryGroup)
+                {
+                    <MCol Md=4 Sm=6 Cols=12 Class="mb-4">
+                        <MCard Class="h-100 d-flex flex-column" Elevation="2" Hover Style="min-height: 180px;">
+                            <MCardText Class="pb-0 flex-grow-1 d-flex flex-column">
+                                <div class="d-flex align-center mb-3">
+                                    @if (IsIconName(app.IconUrl))
+                                    {
+                                        <MIcon Size="40" Color="primary" Class="mr-3">
+                                            @GetFallbackIcon(app.IconUrl)
+                                        </MIcon>
+                                    }
+                                    else
+                                    {
+                                        <MAvatar Size="40" Class="mr-3">
+                                            <MImage Src="@app.IconUrl" Alt="@app.Name" Style="object-fit: contain;" 
+                                                    ErrorSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0MzE4RkYiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0idHJhbnNmb3JtOiB0cmFuc2xhdGUoOHB4LCA4cHgpIj4KPHBhdGggZD0iTTEyIDJDMTMuMSAyIDE0IDIuOSAxNCA0VjhDMTQgOS4xIDEzLjEgMTAgMTIgMTBIMTBWOUgxMi41VjRDMTIuNSAzLjcyIDEyLjI4IDMuNSAxMiAzLjVTMTEuNSAzLjcyIDExLjUgNFY4QzExLjUgOS4zIDEyLjIgMTAgMTMgMTBIMTVWMTJIMTNDMTEuMzQgMTIgMTAgMTAuNjYgMTAgOVY0QzEwIDIuOSAxMC45IDIgMTIgMlpNNiA2VjhIMi41TDYgMTJMMiAxNkg2VjE4SDhWMTZIMTJWMTRIOFYxMkgxMlYxMEg4VjhIMTJWNkg4VjRINlY2Wk0xNiAxNFYxNkgxOFYxNEgxNloiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo8L3N2Zz4K" />
+                                        </MAvatar>
+                                    }
+                                    <div>
+                                        <h4 class="text-subtitle-1 font-weight-medium mb-1">@app.Name</h4>
+                                        <div class="text-caption text--secondary">@app.Code</div>
+                                    </div>
+                                </div>
+                                <p class="text-body-2 mb-0 flex-grow-1" style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">@(string.IsNullOrEmpty(app.Description) ? "No description available" : app.Description)</p>
+                            </MCardText>
+                            <MCardActions Class="pt-0 mt-auto">
+                                <MSpacer />
+                                <MButton Color="primary" 
+                                         OnClick="@(() => LaunchApplicationAsync(app))"
+                                         Disabled="@string.IsNullOrEmpty(app.WebhookUrl)"
+                                         Small>
+                                    <MIcon Left Small>mdi-launch</MIcon>
+                                    Launch
+                                </MButton>
+                            </MCardActions>
+                        </MCard>
+                    </MCol>
+                }
+            </MRow>
+        </div>
+    }
+}
+else
+{
+    <MCard Class="pa-8 text-center">
+        <MCardText>
+            <MIcon Size="120" Color="grey lighten-2" Class="mb-4">mdi-application-outline</MIcon>
+            <h2 class="text-h5 font-weight-medium mb-2">No Applications Available</h2>
+            <p class="text-body-1 text--secondary mb-4">You have not been granted access to any applications yet.</p>
+            <div class="d-flex justify-center flex-wrap ga-2">
+                <a href="/setup-sample-data">
+                    <MButton Color="primary">
+                        <MIcon Left>mdi-plus</MIcon>
+                        Setup Sample Data
+                    </MButton>
+                </a>
+                <MButton Color="grey" Outlined Href="/app/user/list">
+                    <MIcon Left>mdi-account</MIcon>
+                    Manage Users
+                </MButton>
+            </div>
+        </MCardText>
+    </MCard>
+}
+
+@code {
+    private IEnumerable<IGrouping<string, SSOPortalX.Data.Models.Application>> _appsByCat = Enumerable.Empty<IGrouping<string, SSOPortalX.Data.Models.Application>>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get current user ID from session
+            var currentUserIdStr = await CookieStorage.GetAsync("CurrentUserId");
+            
+            if (string.IsNullOrEmpty(currentUserIdStr) || !int.TryParse(currentUserIdStr, out int currentUserId))
+            {
+                // If no valid session, redirect to login
+                Console.WriteLine("No valid session found, user needs to login");
+                _appsByCat = Enumerable.Empty<IGrouping<string, SSOPortalX.Data.Models.Application>>();
+                return;
+            }
+
+            using var context = DbContextFactory.CreateDbContext();
+            
+            // Get accessible app IDs for user
+            var accessibleAppIds = await context.UserAppAccesses
+                .Where(uaa => uaa.UserId == currentUserId)
+                .Select(uaa => uaa.AppId)
+                .ToListAsync();
+
+            // Get all applications with categories
+            var allApps = await context.Applications
+                .Include(a => a.Category)
+                .Where(a => a.IsActive)
+                .ToListAsync();
+
+            // Filter accessible apps
+            var accessibleApps = allApps.Where(app => accessibleAppIds.Contains(app.Id)).ToList();
+
+            _appsByCat = accessibleApps.GroupBy(app => app.Category?.Name ?? "Uncategorized").ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading applications: {ex.Message}");
+            _appsByCat = Enumerable.Empty<IGrouping<string, SSOPortalX.Data.Models.Application>>();
+        }
+    }
+
+    private async Task LaunchApplicationAsync(SSOPortalX.Data.Models.Application app)
+    {
+        try
+        {
+            // Get current user ID from session
+            var currentUserIdStr = await CookieStorage.GetAsync("CurrentUserId");
+            
+            if (string.IsNullOrEmpty(currentUserIdStr) || !int.TryParse(currentUserIdStr, out int currentUserId))
+            {
+                // If no valid session, redirect to login
+                NavigationManager.NavigateTo("/authentication/login");
+                return;
+            }
+
+            // Get or create SSO token for this user and app
+            var token = await SsoTokenService.GetOrCreateTokenAsync(currentUserId, app.Id);
+            
+            if (token != null && !string.IsNullOrEmpty(app.WebhookUrl))
+            {
+                // Create SSO URL with token parameter
+                var ssoUrl = $"{app.WebhookUrl}?sso_token={token.Token}";
+                
+                // Open application in new tab with SSO token using JavaScript
+                await JSRuntime.InvokeVoidAsync("open", ssoUrl, "_blank");
+                
+                Console.WriteLine($"Launching {app.Name} with SSO token for user {currentUserId}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to create token or missing webhook URL for app {app.Name}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error launching application {app.Name}: {ex.Message}");
+        }
+    }
+}

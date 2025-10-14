@@ -1,0 +1,72 @@
+[
+  {
+    "Id": 1,
+    "Title": "My Applications",
+    "Icon": "mdi-view-dashboard",
+    "Href": "/"
+  },
+  {
+    "Id": 2,
+    "Title": "User Management",
+    "Icon": "mdi-account-multiple",
+    "Children": [
+      {
+        "Id": 3,
+        "Title": "Users",
+        "Icon": "mdi-account-group",
+        "Href": "/app/user/list"
+      },
+      {
+        "Id": 4,
+        "Title": "User Access",
+        "Icon": "mdi-account-key",
+        "Href": "/app/user/access"
+      },
+      {
+        "Id": 20,
+        "Title": "Vendors",
+        "Icon": "mdi-store",
+        "Href": "/app/vendor/list"
+      }
+    ]
+  },
+  {
+    "Id": 5,
+    "Title": "Application Management",
+    "Icon": "mdi-apps",
+    "Children": [
+      {
+        "Id": 6,
+        "Title": "Applications",
+        "Icon": "mdi-application",
+        "Href": "/app/application/list"
+      },
+      {
+        "Id": 7,
+        "Title": "Categories",
+        "Icon": "mdi-folder-multiple",
+        "Href": "/app/category/list"
+      }
+    ]
+  },
+  
+  {
+    "Id": 17,
+    "Title": "Settings",
+    "Icon": "mdi-cog",
+    "Children": [
+      {
+        "Id": 18,
+        "Title": "System Settings",
+        "Icon": "mdi-cog-outline",
+        "Href": "/app/settings/system"
+      },
+      {
+        "Id": 19,
+        "Title": "Email Configuration",
+        "Icon": "mdi-email-settings",
+        "Href": "/app/settings/email"
+      }
+    ]
+  }
+]

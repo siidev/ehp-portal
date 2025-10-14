@@ -1,0 +1,143 @@
+
+@page "/app/application/list"
+@inject SSOPortalX.Data.App.Application.ApplicationService ApplicationService
+@inject SSOPortalX.Data.App.Category.CategoryService CategoryService
+
+<MCard>
+    <MCardText Class="pa-6">
+        <MRow>
+            <MCol Sm="12">
+                <MButton Color="primary" OnClick="() => OpenAddDialog()">
+                    Add Application
+                </MButton>
+            </MCol>
+        </MRow>
+    </MCardText>
+
+    <MDataTable Headers="_headers" Items="_applications" TItem="SSOPortalX.Data.Models.Application">
+        <HeaderColContent Context="header">
+            <span class="text-subtitle">@header.Text</span>
+        </HeaderColContent>
+        <ItemColContent Context="context">
+            @switch (context.Header.Value)
+            {
+                case nameof(SSOPortalX.Data.Models.Application.Name):
+                    @context.Item.Name
+                    break;
+                case nameof(SSOPortalX.Data.Models.Application.Code):
+                    @context.Item.Code
+                    break;
+                case "Category":
+                    @(context.Item.Category?.Name)
+                    break;
+                case "Actions":
+                    <MButton Icon OnClick="() => OpenEditDialog(context.Item)">
+                        <MIcon Small>mdi-pencil</MIcon>
+                    </MButton>
+                    <MButton Icon OnClick="() => HandleDeleteApplication(context.Item.Id)">
+                        <MIcon Small>mdi-delete</MIcon>
+                    </MButton>
+                    break;
+            }
+        </ItemColContent>
+    </MDataTable>
+</MCard>
+
+<MDialog @bind-Value="_dialogVisible" MaxWidth="600">
+    <MCard>
+        <MCardTitle>@_dialogTitle</MCardTitle>
+        <MCardText>
+            <MForm @ref="_form" Model="_editedApplication">
+                <MTextField @bind-Value="_editedApplication.Name" Label="Name" Rules="@(new List<Func<string, StringBoolean>> { _rules["Name"] })" />
+                <MTextField @bind-Value="_editedApplication.Code" Label="Code" Rules="@(new List<Func<string, StringBoolean>> { _rules["Code"] })" />
+                <MTextField @bind-Value="_editedApplication.Description" Label="Description" />
+                <MTextField @bind-Value="_editedApplication.WebhookUrl" Label="Webhook URL" />
+                <MTextField @bind-Value="_editedApplication.WebhookSecret" Label="Webhook Secret" />
+                <MTextField @bind-Value="_editedApplication.IconUrl" Label="Icon URL" />
+                <MSelect @bind-Value="_editedApplication.CategoryId" Label="Category" Items="_categories" ItemText="c => c.Name" ItemValue="c => c.Id" />
+            </MForm>
+        </MCardText>
+        <MCardActions>
+            <MSpacer />
+            <MButton Text OnClick="() => _dialogVisible = false">Cancel</MButton>
+            <MButton Color="primary" OnClick="HandleSaveApplication">Save</MButton>
+        </MCardActions>
+    </MCard>
+</MDialog>
+
+@code {
+    private List<SSOPortalX.Data.Models.Application> _applications = new();
+    private List<SSOPortalX.Data.Models.Category> _categories = new();
+    private bool _dialogVisible;
+    private string _dialogTitle = "";
+    private SSOPortalX.Data.Models.Application _editedApplication = new();
+    private MForm? _form;
+
+    private readonly List<DataTableHeader<SSOPortalX.Data.Models.Application>> _headers = new()
+    {
+        new() { Text = "Name", Value = nameof(SSOPortalX.Data.Models.Application.Name) },
+        new() { Text = "Code", Value = nameof(SSOPortalX.Data.Models.Application.Code) },
+        new() { Text = "Category", Value = "Category" },
+        new() { Text = "Actions", Value = "Actions", Sortable = false }
+    };
+
+    private Dictionary<string, Func<string, StringBoolean>> _rules = new()
+    {
+        ["Name"] = v => !string.IsNullOrEmpty(v) ? true : "Name is required",
+        ["Code"] = v => !string.IsNullOrEmpty(v) ? true : "Code is required",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadApplications();
+        await LoadCategories();
+    }
+
+    private async Task LoadApplications()
+    {
+        _applications = await ApplicationService.GetApplicationsAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadCategories()
+    {
+        _categories = await CategoryService.GetCategoriesAsync();
+    }
+
+    private void OpenAddDialog()
+    {
+        _editedApplication = new SSOPortalX.Data.Models.Application { IsActive = true };
+        _dialogTitle = "Add Application";
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(SSOPortalX.Data.Models.Application application)
+    {
+        _editedApplication = application;
+        _dialogTitle = "Edit Application";
+        _dialogVisible = true;
+    }
+
+    private async Task HandleSaveApplication()
+    {
+        if (_form is not null && _form.Validate())
+        {
+            if (_editedApplication.Id == 0)
+            {
+                await ApplicationService.CreateApplicationAsync(_editedApplication);
+            }
+            else
+            {
+                await ApplicationService.UpdateApplicationAsync(_editedApplication);
+            }
+            _dialogVisible = false;
+            await LoadApplications();
+        }
+    }
+
+    private async Task HandleDeleteApplication(int applicationId)
+    {
+        await ApplicationService.DeleteApplicationAsync(applicationId);
+        await LoadApplications();
+    }
+}

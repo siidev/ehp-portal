@@ -1,0 +1,21 @@
+<svg width="180" height="49" viewBox="0 0 180 49" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="24.5" cy="24.5" r="20" fill="#4318FF" opacity="0.1"/>
+  
+  <!-- Main Icon -->
+  <circle cx="24.5" cy="24.5" r="16" fill="#4318FF"/>
+  
+  <!-- Key Symbol -->
+  <path d="M19 20h11v2h-11v-2zm0 4h7v2h-7v-2z" fill="white"/>
+  <circle cx="26.5" cy="18.5" r="2" fill="white"/>
+  
+  <!-- Text -->
+  <text x="55" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2D3748">
+    SSO Portal
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="55" y="35" font-family="Arial, sans-serif" font-size="10" fill="#718096">
+    Single Sign-On Platform
+  </text>
+</svg>

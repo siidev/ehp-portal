@@ -1,0 +1,131 @@
+
+@page "/app/category/list"
+@inject SSOPortalX.Data.App.Category.CategoryService CategoryService
+
+<MCard>
+    <MCardText Class="pa-6">
+        <MRow>
+            <MCol Sm="12">
+                <MButton Color="primary" OnClick="() => OpenAddDialog()">
+                    Add Category
+                </MButton>
+            </MCol>
+        </MRow>
+    </MCardText>
+
+    <MDataTable Headers="_headers" Items="_categories" TItem="SSOPortalX.Data.Models.Category">
+        <HeaderColContent Context="header">
+            <span class="text-subtitle">@header.Text</span>
+        </HeaderColContent>
+        <ItemColContent Context="context">
+            @switch (context.Header.Value)
+            {
+                case nameof(SSOPortalX.Data.Models.Category.Name):
+                    @context.Item.Name
+                    break;
+                case nameof(SSOPortalX.Data.Models.Category.Code):
+                    @context.Item.Code
+                    break;
+                case nameof(SSOPortalX.Data.Models.Category.Description):
+                    @context.Item.Description
+                    break;
+                case "Actions":
+                    <MButton Icon OnClick="() => OpenEditDialog(context.Item)">
+                        <MIcon Small>mdi-pencil</MIcon>
+                    </MButton>
+                    <MButton Icon OnClick="() => HandleDeleteCategory(context.Item.Id)">
+                        <MIcon Small>mdi-delete</MIcon>
+                    </MButton>
+                    break;
+            }
+        </ItemColContent>
+    </MDataTable>
+</MCard>
+
+<MDialog @bind-Value="_dialogVisible" MaxWidth="600">
+    <MCard>
+        <MCardTitle>@_dialogTitle</MCardTitle>
+        <MCardText>
+            <MForm @ref="_form" Model="_editedCategory">
+                <MTextField @bind-Value="_editedCategory.Name" Label="Name" Rules="@(new List<Func<string, StringBoolean>> { _rules["Name"] })" />
+                <MTextField @bind-Value="_editedCategory.Code" Label="Code" Rules="@(new List<Func<string, StringBoolean>> { _rules["Code"] })" />
+                <MTextField @bind-Value="_editedCategory.Description" Label="Description" />
+            </MForm>
+        </MCardText>
+        <MCardActions>
+            <MSpacer />
+            <MButton Text OnClick="() => _dialogVisible = false">Cancel</MButton>
+            <MButton Color="primary" OnClick="HandleSaveCategory">Save</MButton>
+        </MCardActions>
+    </MCard>
+</MDialog>
+
+@code {
+    private List<SSOPortalX.Data.Models.Category> _categories = new();
+    private bool _dialogVisible;
+    private string _dialogTitle = "";
+    private SSOPortalX.Data.Models.Category _editedCategory = new();
+    private MForm? _form;
+
+    private readonly List<DataTableHeader<SSOPortalX.Data.Models.Category>> _headers = new()
+    {
+        new() { Text = "Name", Value = nameof(SSOPortalX.Data.Models.Category.Name) },
+        new() { Text = "Code", Value = nameof(SSOPortalX.Data.Models.Category.Code) },
+        new() { Text = "Description", Value = nameof(SSOPortalX.Data.Models.Category.Description) },
+        new() { Text = "Actions", Value = "Actions", Sortable = false }
+    };
+
+    private Dictionary<string, Func<string, StringBoolean>> _rules = new()
+    {
+        ["Name"] = v => !string.IsNullOrEmpty(v) ? true : "Name is required",
+        ["Code"] = v => !string.IsNullOrEmpty(v) ? true : "Code is required",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        _categories = await CategoryService.GetCategoriesAsync();
+        StateHasChanged();
+    }
+
+    private void OpenAddDialog()
+    {
+        _editedCategory = new SSOPortalX.Data.Models.Category { IsActive = true };
+        _dialogTitle = "Add Category";
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(SSOPortalX.Data.Models.Category category)
+    {
+        _editedCategory = category;
+        _dialogTitle = "Edit Category";
+        _dialogVisible = true;
+    }
+
+    private async Task HandleSaveCategory()
+    {
+        if (_form is not null && _form.Validate())
+        {
+            if (_editedCategory.Id == 0)
+            {
+                await CategoryService.CreateCategoryAsync(_editedCategory);
+            }
+            else
+            {
+                await CategoryService.UpdateCategoryAsync(_editedCategory);
+            }
+            _dialogVisible = false;
+            await LoadCategories();
+        }
+    }
+
+    private async Task HandleDeleteCategory(int categoryId)
+    {
+        await CategoryService.DeleteCategoryAsync(categoryId);
+        await LoadCategories();
+    }
+}

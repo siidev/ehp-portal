@@ -1,0 +1,134 @@
+@page "/fix-icons"
+@inherits ProComponentBase
+@inject SSOPortalX.Data.App.Application.ApplicationService ApplicationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Fix Application Icons</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <h1 class="text-h4 font-weight-bold">Fix Application Icons</h1>
+</div>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <MAlert Type="@(_isError ? AlertTypes.Error : AlertTypes.Success)" Class="mb-4">
+        @_message
+    </MAlert>
+}
+
+<MCard Class="pa-6">
+    <MCardText>
+        <p class="text-body-1 mb-4">
+            This tool helps fix application icons that may have incorrect URL formats.
+            It will convert long URLs to appropriate Material Design icon names.
+        </p>
+        
+        <MButton Color="primary" OnClick="FixApplicationIcons" Loading="_isLoading">
+            <MIcon Left>mdi-wrench</MIcon>
+            Fix Application Icons
+        </MButton>
+        
+        <MButton Color="secondary" Class="ml-2" Href="/" Outlined>
+            <MIcon Left>mdi-arrow-left</MIcon>
+            Back to Applications
+        </MButton>
+    </MCardText>
+</MCard>
+
+@code {
+    private string _message = "";
+    private bool _isError = false;
+    private bool _isLoading = false;
+
+    private async Task FixApplicationIcons()
+    {
+        _isLoading = true;
+        _message = "";
+        _isError = false;
+
+        try
+        {
+            var applications = await ApplicationService.GetApplicationsAsync();
+            var fixedCount = 0;
+            
+            foreach (var app in applications)
+            {
+                var needsFixing = false;
+                var newIconUrl = app.IconUrl;
+                
+                // Check if IconUrl is a long URL that should be replaced
+                if (!string.IsNullOrEmpty(app.IconUrl) && !IsIconName(app.IconUrl))
+                {
+                    // Map specific applications to appropriate icons
+                    newIconUrl = app.Code?.ToLower() switch
+                    {
+                        "invoice-app" => "mdi-file-document-edit-outline",
+                        "office365" => "mdi-microsoft-office",
+                        "slack" => "mdi-slack",
+                        "powerbi" => "mdi-chart-bar", 
+                        "tableau" => "mdi-chart-line-variant",
+                        "workday" => "mdi-account-tie",
+                        _ => DetermineIconFromName(app.Name)
+                    };
+                    
+                    if (newIconUrl != app.IconUrl)
+                    {
+                        needsFixing = true;
+                    }
+                }
+                
+                if (needsFixing)
+                {
+                    app.IconUrl = newIconUrl;
+                    await ApplicationService.UpdateApplicationAsync(app);
+                    fixedCount++;
+                }
+            }
+            
+            _message = $"Successfully fixed {fixedCount} application icon(s).";
+            _isError = false;
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error fixing application icons: {ex.Message}";
+            _isError = true;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private static string DetermineIconFromName(string? appName)
+    {
+        if (string.IsNullOrEmpty(appName))
+            return "mdi-application";
+            
+        var name = appName.ToLower();
+        
+        if (name.Contains("invoice"))
+            return "mdi-file-document-edit-outline";
+        if (name.Contains("office") || name.Contains("microsoft"))
+            return "mdi-microsoft-office";
+        if (name.Contains("slack"))
+            return "mdi-slack";
+        if (name.Contains("power") && name.Contains("bi"))
+            return "mdi-chart-bar";
+        if (name.Contains("tableau"))
+            return "mdi-chart-line-variant";
+        if (name.Contains("workday") || name.Contains("hr"))
+            return "mdi-account-tie";
+        if (name.Contains("analytics") || name.Contains("chart"))
+            return "mdi-chart-line";
+        if (name.Contains("document") || name.Contains("file"))
+            return "mdi-file-document";
+        if (name.Contains("email") || name.Contains("mail"))
+            return "mdi-email";
+        if (name.Contains("calendar"))
+            return "mdi-calendar";
+        if (name.Contains("task") || name.Contains("todo"))
+            return "mdi-checkbox-marked-circle";
+        
+        return "mdi-application";
+    }
+}

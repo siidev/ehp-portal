@@ -1,0 +1,84 @@
+﻿@using SSOPortalX.Data.Models
+
+<MNavigationDrawer Temporary Fixed Right Value=Visible ValueChanged=VisibleChanged Width="465" Class="pa-6">
+    <div class="block-between mb-12">
+        <span class="text-h6">Add New User</span>
+        <MIcon Color="neutral-lighten-3" Size=24 OnClick="()=>Visible=false">mdi-close</MIcon>
+    </div>
+    <MForm Model=_newUser>
+        <MTextField @bind-Value="_newUser.Name" Class="mb-6" Label="Full Name" HideDetails="@("auto")" Outlined Required />
+        <MTextField @bind-Value="_newUser.Username" Class="mb-6" Label="Username" HideDetails="@("auto")" Outlined Required />
+        <MTextField @bind-Value="_newUser.Email" Class="mb-6" Label="Email" Type="email" HideDetails="@("auto")" Outlined Required />
+        <MTextField @bind-Value="_newUserPassword" Type="password" Class="mb-6" Label="Password" HideDetails="@("auto")" Outlined Required />
+        <MSelect HideDetails="@("auto")" Class="mb-6" Outlined Label="Role" @bind-Value=_newUser.Role
+                 Items=@_roleOptions ItemText="r => r" ItemValue="r => r">
+        </MSelect>
+        <MSwitch @bind-Value="_newUser.IsActive" Class="mb-6" Label="Active User" Color="primary"></MSwitch>
+
+        <div style="bottom:48px;right:24px;position:absolute">
+            <MButton MinWidth=80 Height=40 Outlined Class="text-btn rounded-pill" OnClick="async() => await UpdateVisible(false)"> Cancel </MButton>
+            <MButton MinWidth=80 Height=40 Color="primary" Class="ml-6 rounded-pill" OnClick="async ()=> await AddData()"> Add </MButton>
+        </div>
+    </MForm>
+</MNavigationDrawer>
+
+@code {
+    private SSOPortalX.Data.Models.User _newUser = new();
+    private string _newUserPassword = "";
+    private readonly List<string> _roleOptions = new() { "Admin", "User" };
+
+    [Parameter]
+    public bool? Visible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool?> VisibleChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<SSOPortalX.Data.Models.User> Submit { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _newUser = new SSOPortalX.Data.Models.User
+        {
+            Name = "",
+            Username = "",
+            Email = "",
+            Role = "User",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _newUserPassword = "";
+    }
+
+    private async Task UpdateVisible(bool visible)
+    {
+        if (VisibleChanged.HasDelegate)
+        {
+            await VisibleChanged.InvokeAsync(visible);
+        }
+        else
+        {
+            Visible = visible;
+        }
+    }
+
+    private async Task AddData()
+    {
+        // Basic validation
+        if (string.IsNullOrWhiteSpace(_newUser.Name) || 
+            string.IsNullOrWhiteSpace(_newUser.Username) ||
+            string.IsNullOrWhiteSpace(_newUser.Email) ||
+            string.IsNullOrWhiteSpace(_newUserPassword))
+        {
+            return;
+        }
+
+        // Hash the password before saving
+        _newUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(_newUserPassword);
+        
+        if (Submit.HasDelegate) await Submit.InvokeAsync(_newUser);
+
+        await UpdateVisible(false);
+    }
+}

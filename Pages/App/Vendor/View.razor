@@ -1,0 +1,170 @@
+@page "/app/vendor/view/{Id:int}"
+@inherits ProComponentBase
+@using SSOPortalX.Data.App.Vendor
+@using SSOPortalX.Data.App.Vendor.Dto
+@inject VendorService VendorService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Vendor Details - SSO Portal</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <h1 class="text-h4 font-weight-bold">Vendor Details</h1>
+    <div class="d-flex ga-2">
+        <MButton Color="primary" OnClick="@(() => EditVendor())">
+            <MIcon Left>mdi-pencil</MIcon>
+            Edit Vendor
+        </MButton>
+        <MButton Color="grey" OnClick="@(() => NavigationManager.NavigateTo("/app/vendor/list"))">
+            <MIcon Left>mdi-arrow-left</MIcon>
+            Back to List
+        </MButton>
+    </div>
+</div>
+
+@if (_vendor != null)
+{
+    <MRow>
+        <MCol Cols="12" Md="8">
+            <MCard>
+                <MCardTitle>
+                    <span class="text-h5">@_vendor.Name</span>
+                </MCardTitle>
+                <MCardText>
+                    <MList>
+                        <MListItem>
+                            <MListItemContent>
+                                <MListItemTitle>Vendor Name</MListItemTitle>
+                                <MListItemSubtitle>@_vendor.Name</MListItemSubtitle>
+                            </MListItemContent>
+                        </MListItem>
+                        
+                        <MListItem>
+                            <MListItemContent>
+                                <MListItemTitle>Associated User</MListItemTitle>
+                                <MListItemSubtitle>@_vendor.UserName (@_vendor.UserEmail)</MListItemSubtitle>
+                            </MListItemContent>
+                        </MListItem>
+                        
+                        @if (!string.IsNullOrEmpty(_vendor.Phone))
+                        {
+                            <MListItem>
+                                <MListItemContent>
+                                    <MListItemTitle>Phone</MListItemTitle>
+                                    <MListItemSubtitle>@_vendor.Phone</MListItemSubtitle>
+                                </MListItemContent>
+                            </MListItem>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(_vendor.FullAddress))
+                        {
+                            <MListItem>
+                                <MListItemContent>
+                                    <MListItemTitle>Address</MListItemTitle>
+                                    <MListItemSubtitle>@_vendor.FullAddress</MListItemSubtitle>
+                                </MListItemContent>
+                            </MListItem>
+                        }
+                        
+                        <MListItem>
+                            <MListItemContent>
+                                <MListItemTitle>Created</MListItemTitle>
+                                <MListItemSubtitle>@_vendor.CreatedAt.ToString("dd MMMM yyyy HH:mm")</MListItemSubtitle>
+                            </MListItemContent>
+                        </MListItem>
+                        
+                        <MListItem>
+                            <MListItemContent>
+                                <MListItemTitle>Last Updated</MListItemTitle>
+                                <MListItemSubtitle>@_vendor.UpdatedAt.ToString("dd MMMM yyyy HH:mm")</MListItemSubtitle>
+                            </MListItemContent>
+                        </MListItem>
+                    </MList>
+                </MCardText>
+            </MCard>
+        </MCol>
+        
+        <MCol Cols="12" Md="4">
+            <MCard>
+                <MCardTitle>
+                    <span class="text-h6">Quick Actions</span>
+                </MCardTitle>
+                <MCardText>
+                    <div class="d-flex flex-column ga-2">
+                        <MButton Color="primary" Variant="outlined" Block OnClick="@(() => EditVendor())">
+                            <MIcon Left>mdi-pencil</MIcon>
+                            Edit Vendor
+                        </MButton>
+                        <MButton Color="error" Variant="outlined" Block OnClick="DeleteVendor">
+                            <MIcon Left>mdi-delete</MIcon>
+                            Delete Vendor
+                        </MButton>
+                    </div>
+                </MCardText>
+            </MCard>
+        </MCol>
+    </MRow>
+}
+else
+{
+    <MCard Class="pa-8 text-center">
+        <MCardText>
+            <MIcon Size="120" Color="grey lighten-2" Class="mb-4">mdi-account-question</MIcon>
+            <h2 class="text-h5 font-weight-medium mb-2">Vendor Not Found</h2>
+            <p class="text-body-1 text--secondary mb-4">The requested vendor could not be found.</p>
+            <MButton Color="primary" OnClick="@(() => NavigationManager.NavigateTo("/app/vendor/list"))">
+                <MIcon Left>mdi-arrow-left</MIcon>
+                Back to Vendor List
+            </MButton>
+        </MCardText>
+    </MCard>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private VendorDto? _vendor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVendor();
+    }
+
+    private async Task LoadVendor()
+    {
+        try
+        {
+            var vendor = await VendorService.GetVendorByIdAsync(Id);
+            if (vendor != null)
+            {
+                _vendor = new VendorDto(vendor);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading vendor: {ex.Message}");
+        }
+    }
+
+    private void EditVendor()
+    {
+        if (_vendor != null)
+        {
+            NavigationManager.NavigateTo($"/app/vendor/edit/{_vendor.Id}");
+        }
+    }
+
+    private async Task DeleteVendor()
+    {
+        try
+        {
+            await VendorService.DeleteVendorAsync(Id);
+            NavigationManager.NavigateTo("/app/vendor/list");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting vendor: {ex.Message}");
+        }
+    }
+}
+

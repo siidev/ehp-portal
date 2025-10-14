@@ -1,0 +1,108 @@
+﻿@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject NavigationManager Navigation
+@inject SSOPortalX.CookieStorage CookieStorage
+
+<MMenu OffsetX Left OffsetY>
+    <ActivatorContent Context="menuContext">
+        <div class="d-flex align-center pa-2 border-left-solid" style="min-width:150px;">
+            <MAvatar @attributes="menuContext.Attrs" Size=40 Class="mr-3">
+                <MImage Src="/img/avatar/2.svg"></MImage>
+            </MAvatar>
+            <div class="d-flex flex-column">
+                <span class="text-subtitle-2 font-weight-medium">@_currentUser?.Name</span>
+                <span class="text-caption text--secondary">@_currentUser?.Role</span>
+            </div>
+        </div>
+    </ActivatorContent>
+    <ChildContent>
+        <MList Dense>
+            <MListItem>
+                <MListItemIcon Class="mr-4">
+                    <MIcon Size=20 Color="primary">mdi-account-circle</MIcon>
+                </MListItemIcon>
+                <MListItemContent>
+                    <MListItemTitle>@_currentUser?.Name</MListItemTitle>
+                    <MListItemSubtitle>@_currentUser?.Email</MListItemSubtitle>
+                </MListItemContent>
+            </MListItem>
+            <MDivider />
+            <MListItem Link Href="/pages/others/account-settings">
+                <MListItemIcon Class="mr-4">
+                    <MIcon Size=20 Color="neutral-lighten-4">mdi-account-edit</MIcon>
+                </MListItemIcon>
+                <MListItemContent>
+                    <MListItemTitle>
+                        <span class="neutral-lighten-4--text">Account Settings</span>
+                    </MListItemTitle>
+                </MListItemContent>
+            </MListItem>
+            <MListItem OnClick="HandleLogout">
+                <MListItemIcon Class="mr-4">
+                    <MIcon Size=20 Color="error">mdi-logout</MIcon>
+                </MListItemIcon>
+                <MListItemContent>
+                    <MListItemTitle>
+                        <span class="error--text">Logout</span>
+                    </MListItemTitle>
+                </MListItemContent>
+            </MListItem>
+        </MList>
+    </ChildContent>
+</MMenu>
+
+@code {
+    private SSOPortalX.Data.Models.User? _currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get current user from session
+            var currentUserId = await CookieStorage.GetAsync("CurrentUserId");
+            
+            if (!string.IsNullOrEmpty(currentUserId) && int.TryParse(currentUserId, out int userId))
+            {
+                using var context = DbContextFactory.CreateDbContext();
+                _currentUser = await context.Users.FindAsync(userId);
+            }
+            
+            // If no session or user not found, fallback
+            if (_currentUser == null)
+            {
+                _currentUser = new SSOPortalX.Data.Models.User 
+                { 
+                    Name = "Guest User", 
+                    Username = "guest", 
+                    Email = "guest@example.com", 
+                    Role = "User" 
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading user: {ex.Message}");
+            // Fallback to guest user
+            _currentUser = new SSOPortalX.Data.Models.User 
+            { 
+                Name = "Guest User", 
+                Username = "guest", 
+                Email = "guest@example.com", 
+                Role = "User" 
+            };
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        // Clear session data by setting empty values
+        await CookieStorage.SetAsync("CurrentUserId", "");
+        await CookieStorage.SetAsync("CurrentUsername", "");  
+        await CookieStorage.SetAsync("CurrentUserRole", "");
+        
+        // TODO: Send logout webhook to registered apps
+        // TODO: Clear SSO tokens
+        
+        Navigation.NavigateTo("/authentication/login", true);
+    }
+}

@@ -1,0 +1,195 @@
+@page "/app/user/view"
+@page "/app/user/view/{Id}"
+@inherits ProComponentBase
+
+<MCard>
+<MCardText Class="px-6 pb-6">
+<MTabs @bind-Value="tab" HideSlider Height=10 Color="sample-green">
+    <MTab Value="@("Account")">
+        <MIcon Size=16 Color="@(tab == "Account" ? "sample-green" : "fill")">mdi-circle</MIcon>
+        <span class="ml-2 text-btn @(tab == "Account" ? "neutral--text" : "")">Account</span>
+    </MTab>
+    <MTab Class="ml-2" Value="@("Information")">
+        <MIcon Size=16 Color="@(tab == "Information" ? "sample-green" : "fill")">mdi-circle</MIcon>
+        <span class="ml-2 text-btn @(tab == "Information" ? "neutral--text" : "")">Information</span>
+    </MTab>
+    <MTab Class="ml-2" Value="@("Social")">
+        <MIcon Size=16 Color="@(tab == "Social" ? "sample-green" : "fill")">mdi-circle</MIcon>
+        <span class="ml-2 text-btn @(tab == "Social" ? "neutral--text" : "")">Social</span>
+    </MTab>
+</MTabs>
+<MTabsItems @bind-Value="tab" Class="mt-4">
+<MTabItem Value="@("Account")">
+    <div class="d-flex block-center mt-3">
+        @if (string.IsNullOrEmpty(UserData.HeadImg))
+        {
+            string color = UserData.Color;
+            <MAvatar Size="120" Color="@($"{color}-lighten-5")">
+                <span class="@($"{color}--text text-h3")">@UserData.SampleName</span>
+            </MAvatar>
+        }
+        else
+        {
+            <MAvatar Size="120">
+                <img src="@UserData.HeadImg" />
+            </MAvatar>
+        }
+        <div Class="ml-6">
+            <h5 class="mb-6">@UserData.FullName</h5>
+            <MButton Color="primary" MinWidth=80 Height=32 Class="rounded-pill" Link Href="@($"/app/user/edit/{Id}")"> Edit </MButton>
+            <MButton Outlined MinWidth=80 Height=32 Class="ml-6 text-btn rounded-pill" Color="red"> Delete </MButton>
+        </div>
+    </div>
+    <MRow Class="my-3">
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.UserName" Color="primary" Label="UserName" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.FullName" Color="primary" Label="FullName" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Email" Color="primary" Label="Email" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+    </MRow>
+    <MRow>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Status" Color="primary" Label="Status" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Role" Color="primary" Label="Role" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Company" Color="primary" Label="Company" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+    </MRow>
+
+    <div class="mt-12 mb-3">
+        <MIcon Size=20 Color="sample-green" Class="mt-n1">mdi-apps</MIcon>
+        <span class="ml-1 text-h6">Application Access</span>
+    </div>
+    <MRow>
+        @foreach (var app in _allApplications)
+        {
+            <MCol Md=4 Sm=12>
+                <MCheckbox Value="_userAppAccess.ContainsKey(app.Id) && _userAppAccess[app.Id]" Label="@app.Name" Readonly />
+            </MCol>
+        }
+    </MRow>
+</MTabItem>
+
+<MTabItem Value="@("Information")">
+    <div class="mt-3">
+        <MIcon Size=20 Color="sample-green" Class="mt-n1">fa:far fa-user</MIcon>
+        <span class="ml-1 text-h6">Personal Information</span>
+    </div>
+    <MRow Class="mt-3">
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.FullName" Label="Full Name" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Email" Label="Email" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.BirthDate.ToString()" Label="Birth Date" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+    </MRow>
+
+    <MRow Class="mt-3">
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Company" Label="Company" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Mobile" Label="Mobile" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Website" Label="Website" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+    </MRow>
+
+    <MRow Class="mt-3">
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Language" Label="Language" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <span class="text-btn">Gender</span>
+            <div class="mt-2">
+                <MChip Small>@(string.IsNullOrEmpty(UserData.Gender) ? "Not Specified" : UserData.Gender)</MChip>
+            </div>
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <span class="text-btn">Contact Options</span>
+            <div class="d-flex mt-2">
+                <MChip Small Class="mr-2">Email</MChip>
+                <MChip Small Class="mr-2">Message</MChip>
+                <MChip Small>Phone</MChip>
+            </div>
+        </MCol>
+    </MRow>
+
+    <div class="mt-12">
+        <MIcon Size=20 Color="sample-green" Class="mt-n1">mdi-map-marker-outline</MIcon>
+        <span class="text-h6">Address</span>
+        <MRow Class="mt-3">
+            <MCol Md=4 Sm=12>
+                <MTextField Value="@UserData.Address1" Label="Address Line 1" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+            </MCol>
+            <MCol Md=4 Sm=12>
+                <MTextField Value="@UserData.Address2" Label="Address Line 2" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+            </MCol>
+            <MCol Md=4 Sm=12>
+                <MTextField Value="@UserData.Address3" Label="Address Line 3" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+            </MCol>
+        </MRow>
+        <MRow Class="mt-3">
+            <MCol Md=4 Sm=12>
+                <MTextField Value="@UserData.City" Label="City" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+            </MCol>
+            <MCol Md=4 Sm=12>
+                <MTextField Value="@UserData.State" Label="State" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+            </MCol>
+            <MCol Md=4 Sm=12>
+                <MTextField Value="@UserData.Country" Label="Country" Color="primary" HideDetails="@("auto")" Outlined Readonly />
+            </MCol>
+        </MRow>
+    </div>
+</MTabItem>
+
+<MTabItem Value="@("Social")">
+    <MRow class="mt-1">
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Twitter" Label="Twitter" Color="primary" HideDetails="@("auto")" Outlined PrependInnerIcon="fa:fab fa-twitter" Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Facebook" Label="Facebook" Color="primary" HideDetails="@("auto")" Outlined PrependInnerIcon="mdi-facebook" Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Instagram" Label="Instagram" Color="primary" HideDetails="@("auto")" Outlined PrependInnerIcon="fa:fab fa-instagram" Readonly />
+        </MCol>
+    </MRow>
+    <MRow Class="mt-3">
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Github" Label="Github" Color="primary" HideDetails="@("auto")" Outlined PrependInnerIcon="fa:fab fa-github" Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Codepen" Label="Codepen" Color="primary" HideDetails="@("auto")" Outlined PrependInnerIcon="fa:fab fa-codepen" Readonly />
+        </MCol>
+        <MCol Md=4 Sm=12>
+            <MTextField Value="@UserData.Slack" Label="Slack" Color="primary" HideDetails="@("auto")" Outlined PrependInnerIcon="fa:fab fa-slack" Readonly />
+        </MCol>
+    </MRow>
+</MTabItem>
+</MTabsItems>
+
+<div class="mt-10 d-flex justify-end">
+    <MButton Color="primary" Class="rounded-pill" Link Href="@($"/app/user/edit/{Id}")">
+        <MIcon Left>mdi-pencil</MIcon>
+        Edit User
+    </MButton>
+</div>
+
+</MCardText>
+</MCard>
+
+@code {
+
+}
