@@ -3,6 +3,8 @@
 @using SSOPortalX.Data.App.Vendor
 @using SSOPortalX.Data.App.Vendor.Dto
 @inject VendorService VendorService
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 @inject NavigationManager NavigationManager
 
 <PageTitle>Vendor Details - SSO Portal</PageTitle>

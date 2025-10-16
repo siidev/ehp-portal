@@ -45,10 +45,16 @@ namespace SSOPortalX.Data.Models
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
 
+        [Column("is_disable")]
+        public bool IsDisable { get; set; } = false;
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("deleted_at")]
+        public DateTime? DeletedAt { get; set; }
     }
 }

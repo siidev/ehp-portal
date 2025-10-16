@@ -9,16 +9,19 @@ namespace SSOPortalX.Data.App.Vendor
 {
     public class VendorService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public VendorService(ApplicationDbContext context)
+        public VendorService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
         {
-            _context = context;
+            _dbContextFactory = dbContextFactory;
         }
 
         public async Task<List<VendorModel>> GetVendorsAsync()
         {
-            return await _context.Vendors
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Vendors
+                .AsNoTracking()
+                .Where(v => v.DeletedAt == null)
                 .Include(v => v.User)
                 .OrderBy(v => v.Name)
                 .ToListAsync();
@@ -26,59 +29,72 @@ namespace SSOPortalX.Data.App.Vendor
 
         public async Task<List<VendorModel>> GetVendorsByUserIdAsync(int userId)
         {
-            return await _context.Vendors
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Vendors
+                .AsNoTracking()
+                .Where(v => v.UserId == userId && v.DeletedAt == null)
                 .Include(v => v.User)
-                .Where(v => v.UserId == userId)
                 .OrderBy(v => v.Name)
                 .ToListAsync();
         }
 
         public async Task<VendorModel?> GetVendorByIdAsync(int vendorId)
         {
-            return await _context.Vendors
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Vendors
+                .AsNoTracking()
+                .Where(v => v.Id == vendorId && v.DeletedAt == null)
                 .Include(v => v.User)
-                .FirstOrDefaultAsync(v => v.Id == vendorId);
+                .FirstOrDefaultAsync();
         }
 
         public async Task CreateVendorAsync(VendorModel vendor)
         {
             vendor.CreatedAt = DateTime.UtcNow;
             vendor.UpdatedAt = DateTime.UtcNow;
-            
-            _context.Vendors.Add(vendor);
-            await _context.SaveChangesAsync();
+
+            using var context = _dbContextFactory.CreateDbContext();
+            context.Vendors.Add(vendor);
+            await context.SaveChangesAsync();
         }
 
         public async Task UpdateVendorAsync(VendorModel vendor)
         {
             vendor.UpdatedAt = DateTime.UtcNow;
-            _context.Entry(vendor).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            context.Entry(vendor).State = EntityState.Modified;
+            await context.SaveChangesAsync();
         }
 
         public async Task DeleteVendorAsync(int vendorId)
         {
-            var vendor = await _context.Vendors.FindAsync(vendorId);
-            if (vendor != null)
+            using var context = _dbContextFactory.CreateDbContext();
+            var vendor = await context.Vendors.FindAsync(vendorId);
+            if (vendor != null && vendor.DeletedAt == null)
             {
-                _context.Vendors.Remove(vendor);
-                await _context.SaveChangesAsync();
+                vendor.DeletedAt = DateTime.UtcNow;
+                vendor.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
             }
         }
 
         public async Task<bool> VendorExistsAsync(int vendorId)
         {
-            return await _context.Vendors.AnyAsync(v => v.Id == vendorId);
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Vendors.AsNoTracking().AnyAsync(v => v.Id == vendorId && v.DeletedAt == null);
         }
 
         public async Task<List<VendorModel>> SearchVendorsAsync(string searchTerm)
         {
-            return await _context.Vendors
-                .Include(v => v.User)
-                .Where(v => v.Name.Contains(searchTerm) || 
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Vendors
+                .AsNoTracking()
+                .Where(v => v.DeletedAt == null && 
+                           (v.Name.Contains(searchTerm) || 
                            v.Phone!.Contains(searchTerm) ||
                            v.AddressCity!.Contains(searchTerm) ||
-                           v.AddressCountry!.Contains(searchTerm))
+                           v.AddressCountry!.Contains(searchTerm)))
+                .Include(v => v.User)
                 .OrderBy(v => v.Name)
                 .ToListAsync();
         }

@@ -1,6 +1,8 @@
 ﻿@page "/app/user/list"
 @inherits ProComponentBase
 @inject NavigationManager Nav
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 
 <MCard>
     <MCardText Class="pa-6">
@@ -125,7 +127,7 @@
                                     <MIcon Small>fa:far fa-edit</MIcon>
                                     <MListItemTitle Class="ml-2"> Edit </MListItemTitle>
                                 </MListItem>
-                                <MListItem OnClick="async ()=> await HandleDeleteUserAsync(context.Item.Id)">
+                                <MListItem OnClick="() => OpenDeleteDialog(context.Item)">
                                     <MIcon Small>fa:far fa-trash-alt</MIcon>
                                     <MListItemTitle Class="ml-2"> Delete </MListItemTitle>
                                 </MListItem>
@@ -152,3 +154,9 @@
 </MCard>
 
 <Add @bind-Visible=_visible Submit="HandleAddUserAsync"></Add>
+
+<!-- Delete Confirmation Dialog -->
+<ConfirmDeleteDialog @bind-Visible="_deleteDialogVisible" 
+                     Message="This will permanently delete the user and all associated data."
+                     ItemName="@_userToDelete?.FullName"
+                     OnConfirm="HandleDeleteUserAsync" />

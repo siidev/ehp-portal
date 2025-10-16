@@ -1,6 +1,8 @@
 @page "/app/user/view"
 @page "/app/user/view/{Id}"
 @inherits ProComponentBase
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 
 @if (_isLoading)
 {

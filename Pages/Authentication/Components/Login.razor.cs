@@ -1,5 +1,6 @@
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using SSOPortalX.Data.App.User;
 using SSOPortalX.Data.App.UserAppAccess;
 using SSOPortalX.Data.Security;
@@ -28,6 +29,9 @@ namespace SSOPortalX.Pages.Authentication.Components
         private UserService UserService { get; set; } = default!;
 
         [Inject]
+        private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
+        [Inject]
         private SsoTokenService SsoTokenService { get; set; } = default!;
 
         [Inject]
@@ -53,19 +57,49 @@ namespace SSOPortalX.Pages.Authentication.Components
 
         public string CaptchaInput { get; set; } = "";
         public string? CaptchaImageUrl { get; set; }
+        private string? _currentCaptchaCode;
 
-        protected override async Task OnInitializedAsync()
+    private bool _captchaInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_captchaInitialized)
         {
+            _captchaInitialized = true;
             await GenerateCaptcha();
+            StateHasChanged();
         }
-
-        private async Task GenerateCaptcha()
+        await base.OnAfterRenderAsync(firstRender);
+    }        private async Task GenerateCaptcha()
         {
-            var (code, image) = CaptchaService.GenerateCaptchaImage(150, 65);
-            await CookieStorage.SetAsync("CaptchaCode", code);
-            // Handle SVG CAPTCHA (text-based)
-            var svgContent = System.Text.Encoding.UTF8.GetString(image);
-            CaptchaImageUrl = $"data:image/svg+xml;base64,{Convert.ToBase64String(image)}";
+            try
+            {
+                // Always generate fresh captcha
+                var (code, image) = CaptchaService.GenerateCaptchaImage(150, 65);
+                
+                // Store in component memory (primary)
+                _currentCaptchaCode = code;
+                
+                // Also try to store in cookie for backup
+                try
+                {
+                    await CookieStorage.SetAsync("CaptchaCode", code);
+                }
+                catch (Exception cookieEx)
+                {
+                    Console.WriteLine($"Warning: Could not store captcha in cookie: {cookieEx.Message}");
+                }
+                
+                // Set image
+                CaptchaImageUrl = $"data:image/svg+xml;base64,{Convert.ToBase64String(image)}";
+                
+                // Debug log
+                Console.WriteLine($"Generated CAPTCHA: {code} (stored in component memory)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating captcha: {ex.Message}");
+            }
         }
 
         private async Task HandleLogin()
@@ -76,12 +110,22 @@ namespace SSOPortalX.Pages.Authentication.Components
             
             try
             {
-                var storedCode = await CookieStorage.GetAsync("CaptchaCode");
+                // Use component memory first, fallback to cookie
+                var storedCode = _currentCaptchaCode;
+                if (string.IsNullOrEmpty(storedCode))
+                {
+                    storedCode = await CookieStorage.GetAsync("CaptchaCode");
+                }
+                
+                // Debug log to check captcha validation
+                Console.WriteLine($"Component CAPTCHA: '{_currentCaptchaCode}', Cookie CAPTCHA: '{await CookieStorage.GetAsync("CaptchaCode")}', Input CAPTCHA: '{CaptchaInput}'");
 
                 if (!string.Equals(storedCode, CaptchaInput, StringComparison.OrdinalIgnoreCase))
                 {
                     _errorMessage = "Invalid CAPTCHA";
+                    CaptchaInput = ""; // Clear input
                     await GenerateCaptcha();
+                    StateHasChanged();
                     return;
                 }
 
@@ -97,26 +141,46 @@ namespace SSOPortalX.Pages.Authentication.Components
                     await CookieStorage.SetAsync("CurrentUsername", user.Username);
                     await CookieStorage.SetAsync("CurrentUserRole", user.Role);
                     
+                    // Notify authentication state change
+                    if (AuthStateProvider is CustomAuthenticationStateProvider customProvider)
+                    {
+                        customProvider.NotifyUserAuthentication(user.Id.ToString(), user.Username, user.Role);
+                    }
+                    
+                    // Clear captcha after successful login
+                    _currentCaptchaCode = null;
+                    CaptchaInput = "";
+                    await CookieStorage.RemoveAsync("CaptchaCode");
+                    
                     // Navigate first, then do background token generation
                     Navigation.NavigateTo("/", forceLoad: true);
                     
-                    // Background token processing (non-blocking)
+                    // Background token processing (non-blocking) dengan pembatasan paralelisme
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            // Clear old tokens untuk user ini (optional - untuk keamanan)
                             await SsoTokenService.ClearUserTokensAsync(user.Id);
-                            
+
                             var appIds = await UserAppAccessService.GetAppIdsForUserAsync(user.Id);
-                            
-                            // Generate tokens in parallel for better performance
+
+                            var degreeOfParallelism = Math.Max(1, Math.Min(2, appIds.Count));
+                            using var semaphore = new SemaphoreSlim(degreeOfParallelism);
+
                             var tokenTasks = appIds.Select(async appId =>
                             {
-                                var token = await SsoTokenService.GenerateTokenAsync(user.Id, appId);
-                                System.Console.WriteLine($"Generated token for user {user.Username} and app {appId}: {token.Token}");
-                            });
-                            
+                                await semaphore.WaitAsync();
+                                try
+                                {
+                                    var token = await SsoTokenService.GenerateTokenAsync(user.Id, appId);
+                                    System.Console.WriteLine($"Generated token for user {user.Username} and app {appId}: {token.Token}");
+                                }
+                                finally
+                                {
+                                    semaphore.Release();
+                                }
+                            }).ToList();
+
                             await Task.WhenAll(tokenTasks);
                         }
                         catch (Exception ex)

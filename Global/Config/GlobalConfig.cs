@@ -55,7 +55,7 @@ public class GlobalConfig
         set
         {
             _expandOnHover = value;
-            _cookieStorage.SetAsync(ExpandOnHoverCookieKey, value);
+            _cookieStorage.SetAsync(ExpandOnHoverCookieKey, value.ToString());
         }
     }
 

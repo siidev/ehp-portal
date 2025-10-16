@@ -46,6 +46,15 @@ namespace SSOPortalX.Data
                 .WithMany()
                 .HasForeignKey(v => v.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Indexes for SsoPortalToken performance
+            modelBuilder.Entity<SsoPortalToken>()
+                .HasIndex(t => t.Token)
+                .HasDatabaseName("IX_sso_portal_tokens_token");
+
+            modelBuilder.Entity<SsoPortalToken>()
+                .HasIndex(t => new { t.UserId, t.IsActive, t.ExpiresAt })
+                .HasDatabaseName("IX_sso_portal_tokens_user_active_exp");
         }
     }
 }

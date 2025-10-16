@@ -9,12 +9,12 @@ namespace SSOPortalX.Data.Sso
 {
     public class SsoTokenService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly WebhookService _webhookService;
 
-        public SsoTokenService(ApplicationDbContext context, WebhookService webhookService)
+        public SsoTokenService(IDbContextFactory<ApplicationDbContext> contextFactory, WebhookService webhookService)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _webhookService = webhookService;
         }
 
@@ -31,16 +31,15 @@ namespace SSOPortalX.Data.Sso
                 IsActive = true
             };
 
-            _context.SsoPortalTokens.Add(token);
-            await _context.SaveChangesAsync();
+            using var context = _contextFactory.CreateDbContext();
+            context.SsoPortalTokens.Add(token);
+            await context.SaveChangesAsync();
 
-            // Fetch the related entities needed for the webhook payload
-            var dbToken = await _context.SsoPortalTokens
-                .Include(t => t.User)
-                .Include(t => t.App)
-                .FirstAsync(t => t.Id == token.Id);
+            // Ambil data minimum untuk payload tanpa Include berat
+            var user = await context.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
+            var app = await context.Applications.AsNoTracking().FirstAsync(a => a.Id == appId);
 
-            if (!string.IsNullOrEmpty(dbToken.App.WebhookUrl) && !string.IsNullOrEmpty(dbToken.App.WebhookSecret))
+            if (!string.IsNullOrEmpty(app.WebhookUrl) && !string.IsNullOrEmpty(app.WebhookSecret))
             {
                 var payload = new
                 {
@@ -48,20 +47,21 @@ namespace SSOPortalX.Data.Sso
                     timestamp = System.DateTime.UtcNow,
                     data = new
                     {
-                        token = dbToken.Token,
+                        token = token.Token,
                         user = new
                         {
-                            id = dbToken.User.Id,
-                            username = dbToken.User.Username,
-                            email = dbToken.User.Email,
-                            name = dbToken.User.Name,
-                            role = dbToken.User.Role
+                            id = user.Id,
+                            username = user.Username,
+                            email = user.Email,
+                            name = user.Name,
+                            role = user.Role
                         },
-                        expires_at = dbToken.ExpiresAt
+                        expires_at = token.ExpiresAt
                     }
                 };
 
-                await _webhookService.SendWebhookAsync(dbToken.App.WebhookUrl, dbToken.App.WebhookSecret, payload);
+                // Non-blocking webhook dengan timeout pendek di dalam service
+                _ = _webhookService.SendWebhookAsync(app.WebhookUrl, app.WebhookSecret, payload);
             }
 
             return token;
@@ -70,7 +70,8 @@ namespace SSOPortalX.Data.Sso
         public async Task<SsoPortalToken?> GetOrCreateTokenAsync(int userId, int appId)
         {
             // Cek apakah sudah ada token yang masih valid
-            var existingToken = await _context.SsoPortalTokens
+            using var context = _contextFactory.CreateDbContext();
+            var existingToken = await context.SsoPortalTokens
                 .Include(t => t.User)
                 .Include(t => t.App)
                 .FirstOrDefaultAsync(t => t.UserId == userId && t.AppId == appId && t.IsActive && t.ExpiresAt > System.DateTime.UtcNow);
@@ -86,7 +87,8 @@ namespace SSOPortalX.Data.Sso
 
         public async Task<SsoPortalToken?> ValidateTokenAsync(string tokenValue)
         {
-            var token = await _context.SsoPortalTokens
+            using var context = _contextFactory.CreateDbContext();
+            var token = await context.SsoPortalTokens
                 .Include(t => t.User)
                 .Include(t => t.App)
                 .FirstOrDefaultAsync(t => t.Token == tokenValue);
@@ -101,16 +103,10 @@ namespace SSOPortalX.Data.Sso
 
         public async Task ClearUserTokensAsync(int userId)
         {
-            var userTokens = await _context.SsoPortalTokens
-                .Where(t => t.UserId == userId && t.IsActive)
-                .ToListAsync();
-
-            foreach (var token in userTokens)
-            {
-                token.IsActive = false; // Deactivate instead of delete for audit trail
-            }
-
-            await _context.SaveChangesAsync();
+            using var context = _contextFactory.CreateDbContext();
+            // Single batch UPDATE untuk menonaktifkan token aktif milik user
+            var sql = "UPDATE sso_portal_tokens SET is_active = 0, updated_at = UTC_TIMESTAMP() WHERE user_id = {0} AND is_active = 1";
+            await context.Database.ExecuteSqlRawAsync(sql, userId);
         }
 
         private string GenerateSecureToken(int length = 64)

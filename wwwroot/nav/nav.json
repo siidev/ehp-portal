@@ -3,30 +3,35 @@
     "Id": 1,
     "Title": "My Applications",
     "Icon": "mdi-view-dashboard",
-    "Href": "/"
+    "Href": "/",
+    "Roles": ["Admin", "User"]
   },
   {
     "Id": 2,
     "Title": "User Management",
     "Icon": "mdi-account-multiple",
+    "Roles": ["Admin"],
     "Children": [
       {
         "Id": 3,
         "Title": "Users",
         "Icon": "mdi-account-group",
-        "Href": "/app/user/list"
+        "Href": "/app/user/list",
+        "Roles": ["Admin"]
       },
       {
         "Id": 4,
         "Title": "User Access",
         "Icon": "mdi-account-key",
-        "Href": "/app/user/access"
+        "Href": "/app/user/access",
+        "Roles": ["Admin"]
       },
       {
         "Id": 20,
         "Title": "Vendors",
         "Icon": "mdi-store",
-        "Href": "/app/vendor/list"
+        "Href": "/app/vendor/list",
+        "Roles": ["Admin"]
       }
     ]
   },
@@ -34,18 +39,21 @@
     "Id": 5,
     "Title": "Application Management",
     "Icon": "mdi-apps",
+    "Roles": ["Admin"],
     "Children": [
       {
         "Id": 6,
         "Title": "Applications",
         "Icon": "mdi-application",
-        "Href": "/app/application/list"
+        "Href": "/app/application/list",
+        "Roles": ["Admin"]
       },
       {
         "Id": 7,
         "Title": "Categories",
         "Icon": "mdi-folder-multiple",
-        "Href": "/app/category/list"
+        "Href": "/app/category/list",
+        "Roles": ["Admin"]
       }
     ]
   },
@@ -54,18 +62,21 @@
     "Id": 17,
     "Title": "Settings",
     "Icon": "mdi-cog",
+    "Roles": ["Admin"],
     "Children": [
       {
         "Id": 18,
         "Title": "System Settings",
         "Icon": "mdi-cog-outline",
-        "Href": "/app/settings/system"
+        "Href": "/app/settings/system",
+        "Roles": ["Admin"]
       },
       {
         "Id": 19,
         "Title": "Email Configuration",
         "Icon": "mdi-email-settings",
-        "Href": "/app/settings/email"
+        "Href": "/app/settings/email",
+        "Roles": ["Admin"]
       }
     ]
   }

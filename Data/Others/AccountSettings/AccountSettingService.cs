@@ -1,15 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SSOPortalX.Data.Models;
 using SSOPortalX.Data.Others.AccountSettings.Dto;
+using SSOPortalX.Global;
 
 namespace SSOPortalX.Data.Others.AccountSettings
 {
     public class AccountSettingService
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly SSOPortalX.CookieStorage _cookieStorage;
+        private readonly CookieStorage _cookieStorage;
 
-        public AccountSettingService(IDbContextFactory<ApplicationDbContext> dbContextFactory, SSOPortalX.CookieStorage cookieStorage)
+        public AccountSettingService(IDbContextFactory<ApplicationDbContext> dbContextFactory, CookieStorage cookieStorage)
         {
             _dbContextFactory = dbContextFactory;
             _cookieStorage = cookieStorage;

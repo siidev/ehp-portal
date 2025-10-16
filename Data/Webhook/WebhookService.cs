@@ -19,6 +19,7 @@ namespace SSOPortalX.Data.Webhook
         public async Task SendWebhookAsync(string webhookUrl, string secret, object payload)
         {
             var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(3);
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var signature = CalculateHmacSignature(secret, jsonPayload);
@@ -31,10 +32,12 @@ namespace SSOPortalX.Data.Webhook
             try
             {
                 var response = await client.SendAsync(request);
-                response.EnsureSuccessStatusCode();
-                System.Console.WriteLine($"Webhook sent successfully to {webhookUrl}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    System.Console.WriteLine($"Webhook failed for {webhookUrl}: {(int)response.StatusCode} {response.ReasonPhrase}");
+                }
             }
-            catch (HttpRequestException e)
+            catch (Exception e)
             {
                 System.Console.WriteLine($"Webhook failed for {webhookUrl}: {e.Message}");
             }

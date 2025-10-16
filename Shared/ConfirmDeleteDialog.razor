@@ -1,0 +1,62 @@
+@using Masa.Blazor
+
+<MDialog @bind-Value="Visible" MaxWidth="400" Persistent="true">
+    <MCard>
+        <MCardTitle Class="text-h5 font-weight-bold">
+            <MIcon Left Color="error" Class="mr-2">mdi-alert-circle</MIcon>
+            Confirm Delete
+        </MCardTitle>
+        <MCardText Class="text-body-1">
+            <div class="d-flex align-center">
+                <MIcon Color="warning" Size="48" Class="mr-4">mdi-alert</MIcon>
+                <div>
+                    <p class="mb-2">Are you sure you want to delete this item?</p>
+                    <p class="text-caption mb-0">@Message</p>
+                    @if (!string.IsNullOrEmpty(ItemName))
+                    {
+                        <p class="text-subtitle-2 font-weight-bold mt-2 mb-0">@ItemName</p>
+                    }
+                </div>
+            </div>
+        </MCardText>
+        <MCardActions>
+            <MSpacer />
+            <MButton Text Color="grey" OnClick="Cancel">
+                Cancel
+            </MButton>
+            <MButton Color="error" OnClick="Confirm" Loading="Loading">
+                Delete
+            </MButton>
+        </MCardActions>
+    </MCard>
+</MDialog>
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> VisibleChanged { get; set; }
+
+    [Parameter]
+    public string Message { get; set; } = "This action cannot be undone.";
+
+    [Parameter]
+    public string ItemName { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    private async Task Cancel()
+    {
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task Confirm()
+    {
+        await OnConfirm.InvokeAsync();
+    }
+}

@@ -1,7 +1,9 @@
 ﻿@using Microsoft.EntityFrameworkCore
+@using SSOPortalX.Global
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @inject NavigationManager Navigation
-@inject SSOPortalX.CookieStorage CookieStorage
+@inject CookieStorage CookieStorage
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 
 <MMenu OffsetX Left OffsetY>
     <ActivatorContent Context="menuContext">
@@ -110,6 +112,12 @@
             
             // Clear any cached captcha
             await CookieStorage.SetAsync("CaptchaCode", "");
+            
+            // Notify authentication state change
+            if (AuthStateProvider is SSOPortalX.Data.Security.CustomAuthenticationStateProvider customProvider)
+            {
+                customProvider.NotifyUserLogout();
+            }
             
             // TODO: Send logout webhook to registered apps
             // TODO: Clear SSO tokens

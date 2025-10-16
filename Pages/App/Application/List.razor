@@ -2,6 +2,8 @@
 @page "/app/application/list"
 @inject SSOPortalX.Data.App.Application.ApplicationService ApplicationService
 @inject SSOPortalX.Data.App.Category.CategoryService CategoryService
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 
 <MCard>
     <MCardText Class="pa-6">
@@ -34,7 +36,7 @@
                     <MButton Icon OnClick="() => OpenEditDialog(context.Item)">
                         <MIcon Small>mdi-pencil</MIcon>
                     </MButton>
-                    <MButton Icon OnClick="() => HandleDeleteApplication(context.Item.Id)">
+                    <MButton Icon OnClick="() => OpenDeleteDialog(context.Item)">
                         <MIcon Small>mdi-delete</MIcon>
                     </MButton>
                     break;
@@ -55,6 +57,8 @@
                 <MTextField @bind-Value="_editedApplication.WebhookSecret" Label="Webhook Secret" />
                 <MTextField @bind-Value="_editedApplication.IconUrl" Label="Icon URL" />
                 <MSelect @bind-Value="_editedApplication.CategoryId" Label="Category" Items="_categories" ItemText="c => c.Name" ItemValue="c => c.Id" />
+                <MCheckbox @bind-Value="_editedApplication.IsDisable" Label="Disable Launch" />
+                
             </MForm>
         </MCardText>
         <MCardActions>
@@ -65,6 +69,12 @@
     </MCard>
 </MDialog>
 
+<!-- Delete Confirmation Dialog -->
+<ConfirmDeleteDialog @bind-Visible="_deleteDialogVisible" 
+                     Message="This will permanently delete the application and all associated data."
+                     ItemName="@_applicationToDelete?.Name"
+                     OnConfirm="HandleDeleteApplication" />
+
 @code {
     private List<SSOPortalX.Data.Models.Application> _applications = new();
     private List<SSOPortalX.Data.Models.Category> _categories = new();
@@ -72,6 +82,8 @@
     private string _dialogTitle = "";
     private SSOPortalX.Data.Models.Application _editedApplication = new();
     private MForm? _form;
+    private bool _deleteDialogVisible;
+    private SSOPortalX.Data.Models.Application? _applicationToDelete;
 
     private readonly List<DataTableHeader<SSOPortalX.Data.Models.Application>> _headers = new()
     {
@@ -135,9 +147,20 @@
         }
     }
 
-    private async Task HandleDeleteApplication(int applicationId)
+    private void OpenDeleteDialog(SSOPortalX.Data.Models.Application application)
     {
-        await ApplicationService.DeleteApplicationAsync(applicationId);
-        await LoadApplications();
+        _applicationToDelete = application;
+        _deleteDialogVisible = true;
+    }
+
+    private async Task HandleDeleteApplication()
+    {
+        if (_applicationToDelete != null)
+        {
+            await ApplicationService.DeleteApplicationAsync(_applicationToDelete.Id);
+            await LoadApplications();
+            _deleteDialogVisible = false;
+            _applicationToDelete = null;
+        }
     }
 }

@@ -17,6 +17,8 @@ namespace SSOPortalX.Pages.App.User
         private List<int> _pageSizes = new() { 10, 25, 50, 100 };
         private readonly List<string> _roleList = new() { "Admin", "User" };
         private readonly List<string> _statusList = new() { "Active", "Inactive" };
+        private bool _deleteDialogVisible;
+        private UserDto? _userToDelete;
         private readonly List<DataTableHeader<UserDto>> _headers = new()
         {
             new() { Text = "USER", Value = nameof(UserDto.UserName) },
@@ -46,12 +48,20 @@ namespace SSOPortalX.Pages.App.User
             await LoadUsers();
         }
 
-        private async Task HandleDeleteUserAsync(string userId)
+        private void OpenDeleteDialog(UserDto user)
         {
-            if (int.TryParse(userId, out int id))
+            _userToDelete = user;
+            _deleteDialogVisible = true;
+        }
+
+        private async Task HandleDeleteUserAsync()
+        {
+            if (_userToDelete != null && int.TryParse(_userToDelete.Id, out int id))
             {
                 await UserService.DeleteUserAsync(id);
                 await LoadUsers();
+                _deleteDialogVisible = false;
+                _userToDelete = null;
             }
         }
 

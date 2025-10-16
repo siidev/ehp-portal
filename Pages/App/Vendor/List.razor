@@ -1,5 +1,7 @@
 @page "/app/vendor/list"
 @inherits ProComponentBase
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 @using SSOPortalX.Data.App.Vendor
 @using SSOPortalX.Data.App.Vendor.Dto
 @using SSOPortalX.Data.App.User
@@ -54,7 +56,7 @@
                         <MButton Icon OnClick="() => EditVendor(context.Item)">
                             <MIcon Small>mdi-pencil</MIcon>
                         </MButton>
-                        <MButton Icon OnClick="() => DeleteVendor(context.Item.Id)">
+                        <MButton Icon OnClick="() => OpenDeleteDialog(context.Item)">
                             <MIcon Small>mdi-delete</MIcon>
                         </MButton>
                         break;
@@ -133,6 +135,12 @@
     </MCard>
 </MDialog>
 
+<!-- Delete Confirmation Dialog -->
+<ConfirmDeleteDialog @bind-Visible="_deleteDialogVisible" 
+                     Message="This will permanently delete the vendor and all associated data."
+                     ItemName="@_vendorToDelete?.Name"
+                     OnConfirm="HandleDeleteVendor" />
+
 @code {
     private List<VendorDto> _vendors = new();
     private List<UserDto> _users = new();
@@ -141,6 +149,8 @@
     private string _dialogTitle = "";
     private CreateVendorDto _editedVendor = new();
     private MForm? _form;
+    private bool _deleteDialogVisible;
+    private VendorDto? _vendorToDelete;
 
 
     protected override async Task OnInitializedAsync()
@@ -250,16 +260,27 @@
         NavigationManager.NavigateTo($"/app/vendor/view/{vendorId}");
     }
 
-    private async Task DeleteVendor(int vendorId)
+    private void OpenDeleteDialog(VendorDto vendor)
     {
-        try
+        _vendorToDelete = vendor;
+        _deleteDialogVisible = true;
+    }
+
+    private async Task HandleDeleteVendor()
+    {
+        if (_vendorToDelete != null)
         {
-            await VendorService.DeleteVendorAsync(vendorId);
-            await LoadVendors();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error deleting vendor: {ex.Message}");
+            try
+            {
+                await VendorService.DeleteVendorAsync(_vendorToDelete.Id);
+                await LoadVendors();
+                _deleteDialogVisible = false;
+                _vendorToDelete = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting vendor: {ex.Message}");
+            }
         }
     }
 }

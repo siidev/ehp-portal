@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using SSOPortalX.Data;
 using SSOPortalX.Data.Security;
 
@@ -13,6 +15,25 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONM
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+
+// Add Authentication & Authorization
+builder.Services.AddAuthentication("Cookies")
+    .AddCookie("Cookies", options =>
+    {
+        options.LoginPath = "/authentication/login";
+        options.LogoutPath = "/authentication/logout";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
+});
+
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 builder.Services.AddMasaBlazor(builder =>
 {
     builder.ConfigureTheme(theme =>
@@ -28,14 +49,16 @@ builder.Services.AddNav(Path.Combine(basePath, $"wwwroot/nav/nav.json"));
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-});
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
+    {
+        mysqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(2), errorNumbersToAdd: null);
+        mysqlOptions.CommandTimeout(15);
+    });
 
-builder.Services.AddScoped<ApplicationDbContext>(serviceProvider =>
-{
-    var factory = serviceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-    return factory.CreateDbContext();
+    // Kurangi biaya tracking untuk query baca
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<CookieStorage>();
 builder.Services.AddScoped<GlobalConfig>();
 builder.Services.AddSingleton<CaptchaService>();
@@ -71,6 +94,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapBlazorHub();
 

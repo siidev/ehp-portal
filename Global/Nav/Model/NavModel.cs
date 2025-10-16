@@ -22,6 +22,8 @@ public class NavModel
 
     public string? Target { get; set; }
 
+    public string[]? Roles { get; set; }
+
     public NavModel[]? Children { get; set; }
 
     public NavModel(int id, string? href, string icon, string title, NavModel[]? children)

@@ -41,10 +41,10 @@ RUN chmod -R 755 /app
 USER appuser
 
 # Expose the port the app runs on
-EXPOSE 8080
+EXPOSE 5050
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_URLS=http://+:5050
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_RUNNING_IN_CONTAINER=true
 ENV DOTNET_ENVIRONMENT=Production

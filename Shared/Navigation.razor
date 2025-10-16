@@ -2,6 +2,7 @@
 @inject NavHelper NavHelper
 @inject GlobalConfig GlobalConfig
 @implements IDisposable
+@using Microsoft.AspNetCore.Components.Authorization
 
 <MNavigationDrawer @bind-Value="Visible"
                    Class="@($"navigation {ComputedNavigationClass}")"
@@ -27,44 +28,116 @@
 
         @foreach (var nav in NavHelper.Navs)
         {
-            if (nav.Children is null)
+            @if (nav.Roles == null || nav.Roles.Length == 0)
             {
-                <MBorder Value=false Offset Width=4 Class="rounded-r-1" Border="Borders.Right">
-                    <MListItem Ripple=false Class="mb-4" ActiveClass="fill-lighten-1" Href="@nav.Href">
-                        <ItemContent>
-                            <MListItemIcon>
-                                <MIcon Color="@(context.Active ? "primary" : "neutral-lighten-2")" Size=20>@nav.Icon</MIcon>
-                            </MListItemIcon>
+                <!-- Show menu item without role restriction -->
+                @if (nav.Children is null)
+                {
+                    <MBorder Value=false Offset Size=4 Class="rounded-r-1" Border="Borders.Right">
+                        <MListItem Ripple=false Class="mb-4" ActiveClass="fill-lighten-1" Href="@nav.Href">
+                            <ItemContent Context="itemContext">
+                                <MListItemIcon>
+                                    <MIcon Color="@(itemContext.Active ? "primary" : "neutral-lighten-2")" Size=20>@nav.Icon</MIcon>
+                                </MListItemIcon>
+                                <MListItemContent>
+                                    <div style="margin-left:6.5px;" class="text-truncate white-space:nowrap @(itemContext.Active ? "text-subtitle" : "text-body neutral-lighten-2--text")">@T(nav.Title)</div>
+                                </MListItemContent>
+                            </ItemContent>
+                        </MListItem>
+                    </MBorder>
+                }
+                else
+                {
+                    <MListGroup Group="@nav.Children?.Select(n => n.Href).ToList()" Class="mb-4" PrependIcon="@nav.Icon" NoAction ActiveClass="primaryText" AppendIcon="M8.33398 10.3335L12.5007 14.5002L16.6673 10.3335H8.33398Z">
+                        <ActivatorContent>
                             <MListItemContent>
-                                <div style="margin-left:6.5px;" class="text-truncate white-space:nowrap @(context.Active ? "text-subtitle" : "text-body neutral-lighten-2--text")">@T(nav.Title)</div>
+                                <div style="margin-left:6.5px;" class="text-truncate white-space:nowrap">@T(nav.Title)</div>
                             </MListItemContent>
-                        </ItemContent>
-                    </MListItem>
-                </MBorder>
+                        </ActivatorContent>
+                        <ChildContent>
+                            @if (nav.Children != null)
+                            {
+                                @foreach (var navChild in nav.Children)
+                                {
+                                    <MBorder Value=false Offset Size=4 Class="rounded-r-1" Border="Borders.Right">
+                                        <MListItem Ripple=false ActiveClass="fill-lighten-1" Link Href="@navChild.Href">
+                                            <ItemContent Context="childContext">
+                                                <MListItemContent>
+                                                    <div class="text-truncate white-space:nowrap @(childContext.Active ? "text-subtitle2" : "text-btn neutral-lighten-2--text")">@T(navChild.Title)</div>
+                                                </MListItemContent>
+                                            </ItemContent>
+                                        </MListItem>
+                                    </MBorder>
+                                }
+                            }
+                        </ChildContent>
+                    </MListGroup>
+                }
             }
             else
             {
-                <MListGroup Group="@nav.Children.Select(n => n.Href).ToList()" Class="mb-4" PrependIcon="@nav.Icon" NoAction ActiveClass="primaryText" AppendIcon="M8.33398 10.3335L12.5007 14.5002L16.6673 10.3335H8.33398Z">
-                    <ActivatorContent>
-                        <MListItemContent>
-                            <div style="margin-left:6.5px;" class="text-truncate white-space:nowrap">@T(nav.Title)</div>
-                        </MListItemContent>
-                    </ActivatorContent>
-                    <ChildContent>
-                        @foreach (var navChild in nav.Children)
-                        {
-                            <MBorder Value=false Offset Width=4 Class="rounded-r-1" Border="Borders.Right">
-                                <MListItem Ripple=false ActiveClass="fill-lighten-1" Link Href="@navChild.Href">
-                                    <ItemContent>
-                                        <MListItemContent>
-                                            <div class="text-truncate white-space:nowrap @(context.Active ? "text-subtitle2" : "text-btn neutral-lighten-2--text")">@T(navChild.Title)</div>
-                                        </MListItemContent>
-                                    </ItemContent>
-                                </MListItem>
-                            </MBorder>
-                        }
-                    </ChildContent>
-                </MListGroup>
+                <!-- Show menu item with role restriction -->
+                <AuthorizeView Roles="@string.Join(",", nav.Roles)" Context="authContext">
+                    @if (nav.Children is null)
+                    {
+                        <MBorder Value=false Offset Size=4 Class="rounded-r-1" Border="Borders.Right">
+                            <MListItem Ripple=false Class="mb-4" ActiveClass="fill-lighten-1" Href="@nav.Href">
+                                <ItemContent Context="authItemContext">
+                                    <MListItemIcon>
+                                        <MIcon Color="@(authItemContext.Active ? "primary" : "neutral-lighten-2")" Size=20>@nav.Icon</MIcon>
+                                    </MListItemIcon>
+                                    <MListItemContent>
+                                        <div style="margin-left:6.5px;" class="text-truncate white-space:nowrap @(authItemContext.Active ? "text-subtitle" : "text-body neutral-lighten-2--text")">@T(nav.Title)</div>
+                                    </MListItemContent>
+                                </ItemContent>
+                            </MListItem>
+                        </MBorder>
+                    }
+                    else
+                    {
+                        <MListGroup Group="@nav.Children?.Select(n => n.Href).ToList()" Class="mb-4" PrependIcon="@nav.Icon" NoAction ActiveClass="primaryText" AppendIcon="M8.33398 10.3335L12.5007 14.5002L16.6673 10.3335H8.33398Z">
+                            <ActivatorContent>
+                                <MListItemContent>
+                                    <div style="margin-left:6.5px;" class="text-truncate white-space:nowrap">@T(nav.Title)</div>
+                                </MListItemContent>
+                            </ActivatorContent>
+                            <ChildContent>
+                                @if (nav.Children != null)
+                                {
+                                    @foreach (var navChild in nav.Children)
+                                    {
+                                        @if (navChild.Roles == null || navChild.Roles.Length == 0)
+                                        {
+                                            <MBorder Value=false Offset Size=4 Class="rounded-r-1" Border="Borders.Right">
+                                                <MListItem Ripple=false ActiveClass="fill-lighten-1" Link Href="@navChild.Href">
+                                                    <ItemContent Context="authChildContext">
+                                                        <MListItemContent>
+                                                            <div class="text-truncate white-space:nowrap @(authChildContext.Active ? "text-subtitle2" : "text-btn neutral-lighten-2--text")">@T(navChild.Title)</div>
+                                                        </MListItemContent>
+                                                    </ItemContent>
+                                                </MListItem>
+                                            </MBorder>
+                                        }
+                                        else
+                                        {
+                                            <AuthorizeView Roles="@string.Join(",", navChild.Roles)" Context="childAuthContext">
+                                                <MBorder Value=false Offset Size=4 Class="rounded-r-1" Border="Borders.Right">
+                                                    <MListItem Ripple=false ActiveClass="fill-lighten-1" Link Href="@navChild.Href">
+                                                        <ItemContent Context="authChildItemContext">
+                                                            <MListItemContent>
+                                                                <div class="text-truncate white-space:nowrap @(authChildItemContext.Active ? "text-subtitle2" : "text-btn neutral-lighten-2--text")">@T(navChild.Title)</div>
+                                                            </MListItemContent>
+                                                        </ItemContent>
+                                                    </MListItem>
+                                                </MBorder>
+                                            </AuthorizeView>
+                                        }
+                                    }
+                                }
+                            </ChildContent>
+                        </MListGroup>
+                    }
+                </AuthorizeView>
             }
         }
     </MList>

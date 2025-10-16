@@ -9,42 +9,54 @@ namespace SSOPortalX.Data.App.Category
 {
     public class CategoryService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public CategoryService(ApplicationDbContext context)
+        public CategoryService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
         {
-            _context = context;
+            _dbContextFactory = dbContextFactory;
         }
 
         public async Task<List<Models.Category>> GetCategoriesAsync()
         {
-            return await _context.Categories.ToListAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Categories
+                .AsNoTracking()
+                .Where(c => c.DeletedAt == null)
+                .ToListAsync();
         }
 
         public async Task<Models.Category?> GetCategoryByIdAsync(int categoryId)
         {
-            return await _context.Categories.FindAsync(categoryId);
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Categories
+                .AsNoTracking()
+                .Where(c => c.Id == categoryId && c.DeletedAt == null)
+                .FirstOrDefaultAsync();
         }
 
         public async Task CreateCategoryAsync(Models.Category category)
         {
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            context.Categories.Add(category);
+            await context.SaveChangesAsync();
         }
 
         public async Task UpdateCategoryAsync(Models.Category category)
         {
-            _context.Entry(category).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            context.Entry(category).State = EntityState.Modified;
+            await context.SaveChangesAsync();
         }
 
         public async Task DeleteCategoryAsync(int categoryId)
         {
-            var category = await _context.Categories.FindAsync(categoryId);
-            if (category != null)
+            using var context = _dbContextFactory.CreateDbContext();
+            var category = await context.Categories.FindAsync(categoryId);
+            if (category != null && category.DeletedAt == null)
             {
-                _context.Categories.Remove(category);
-                await _context.SaveChangesAsync();
+                category.DeletedAt = DateTime.UtcNow;
+                category.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
             }
         }
     }

@@ -1,6 +1,8 @@
 
 @page "/app/category/list"
 @inject SSOPortalX.Data.App.Category.CategoryService CategoryService
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 
 <MCard>
     <MCardText Class="pa-6">
@@ -33,7 +35,7 @@
                     <MButton Icon OnClick="() => OpenEditDialog(context.Item)">
                         <MIcon Small>mdi-pencil</MIcon>
                     </MButton>
-                    <MButton Icon OnClick="() => HandleDeleteCategory(context.Item.Id)">
+                    <MButton Icon OnClick="() => OpenDeleteDialog(context.Item)">
                         <MIcon Small>mdi-delete</MIcon>
                     </MButton>
                     break;
@@ -60,12 +62,20 @@
     </MCard>
 </MDialog>
 
+<!-- Delete Confirmation Dialog -->
+<ConfirmDeleteDialog @bind-Visible="_deleteDialogVisible" 
+                     Message="This will permanently delete the category and all associated applications."
+                     ItemName="@_categoryToDelete?.Name"
+                     OnConfirm="HandleDeleteCategory" />
+
 @code {
     private List<SSOPortalX.Data.Models.Category> _categories = new();
     private bool _dialogVisible;
     private string _dialogTitle = "";
     private SSOPortalX.Data.Models.Category _editedCategory = new();
     private MForm? _form;
+    private bool _deleteDialogVisible;
+    private SSOPortalX.Data.Models.Category? _categoryToDelete;
 
     private readonly List<DataTableHeader<SSOPortalX.Data.Models.Category>> _headers = new()
     {
@@ -123,9 +133,20 @@
         }
     }
 
-    private async Task HandleDeleteCategory(int categoryId)
+    private void OpenDeleteDialog(SSOPortalX.Data.Models.Category category)
     {
-        await CategoryService.DeleteCategoryAsync(categoryId);
-        await LoadCategories();
+        _categoryToDelete = category;
+        _deleteDialogVisible = true;
+    }
+
+    private async Task HandleDeleteCategory()
+    {
+        if (_categoryToDelete != null)
+        {
+            await CategoryService.DeleteCategoryAsync(_categoryToDelete.Id);
+            await LoadCategories();
+            _deleteDialogVisible = false;
+            _categoryToDelete = null;
+        }
     }
 }

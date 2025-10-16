@@ -3,7 +3,9 @@
 @inject SSOPortalX.Data.App.User.UserService UserService
 @inject SSOPortalX.Data.App.Application.ApplicationService ApplicationService
 @inject SSOPortalX.Data.App.UserAppAccess.UserAppAccessService UserAppAccessService
-@inject SSOPortalX.CookieStorage CookieStorage
+@inject SSOPortalX.Global.CookieStorage CookieStorage
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>User Access Management</PageTitle>
 
@@ -268,26 +270,40 @@ else
         {
             var users = await UserService.GetListAsync();
             _allApplications = await ApplicationService.GetApplicationsAsync();
-            
+            // Hanya pertimbangkan aplikasi yang aktif dan tidak dihapus
+            _allApplications = _allApplications
+                ?.Where(a => a.IsActive && a.DeletedAt == null)
+                .ToList();
+
+            var activeAppIdSet = _allApplications != null
+                ? new HashSet<int>(_allApplications.Select(a => a.Id))
+                : new HashSet<int>();
+
             _userAccessData = new List<UserAccessRow>();
-            
-            foreach (var user in users)
+
+            var parsedUsers = users
+                .Select(u => (Success: int.TryParse(u.Id, out var id), Id: id, U: u))
+                .Where(t => t.Success)
+                .Select(t => (t.Id, t.U))
+                .ToList();
+
+            var userIds = parsedUsers.Select(t => t.Id).ToList();
+
+            // Ambil ringkasan akses dalam satu query teragregasi
+            var summary = await UserAppAccessService.GetAccessSummaryForUsersAsync(userIds, activeAppIdSet);
+
+            foreach (var (userId, u) in parsedUsers)
             {
-                if (int.TryParse(user.Id, out int userId))
+                var (count, earliest) = summary.TryGetValue(userId, out var val) ? val : (0, (DateTime?)null);
+                _userAccessData.Add(new UserAccessRow
                 {
-                    var appIds = await UserAppAccessService.GetAppIdsForUserAsync(userId);
-                    var grantedAt = await UserAppAccessService.GetEarliestGrantedAtForUserAsync(userId);
-                    
-                    _userAccessData.Add(new UserAccessRow
-                    {
-                        UserId = userId,
-                        UserName = user.FullName,
-                        UserEmail = user.Email ?? "",
-                        Role = user.Role,
-                        ApplicationsCount = appIds.Count,
-                        GrantedAt = grantedAt
-                    });
-                }
+                    UserId = userId,
+                    UserName = u.FullName,
+                    UserEmail = u.Email ?? "",
+                    Role = u.Role,
+                    ApplicationsCount = count,
+                    GrantedAt = earliest
+                });
             }
         }
         finally
@@ -326,8 +342,10 @@ else
         // Initialize dual lists
         if (_allApplications != null)
         {
-            _grantedApplications = _allApplications.Where(app => currentAppIds.Contains(app.Id)).ToList();
-            _availableApplications = _allApplications.Where(app => !currentAppIds.Contains(app.Id)).ToList();
+            // Hanya tampilkan aplikasi aktif & tidak dihapus pada kedua daftar
+            var activeApps = _allApplications.Where(a => a.IsActive && a.DeletedAt == null).ToList();
+            _grantedApplications = activeApps.Where(app => currentAppIds.Contains(app.Id)).ToList();
+            _availableApplications = activeApps.Where(app => !currentAppIds.Contains(app.Id)).ToList();
         }
         
         // Clear selections

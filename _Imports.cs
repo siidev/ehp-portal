@@ -1,17 +1,9 @@
 ﻿global using Masa.Blazor;
 global using SSOPortalX;
-global using SSOPortalX.Data.App.ECommerce;
-global using SSOPortalX.Data.App.ECommerce.Dto;
-global using SSOPortalX.Data.App.Invoice;
-global using SSOPortalX.Data.App.Invoice.Dto;
-global using SSOPortalX.Data.App.Todo;
-global using SSOPortalX.Data.App.Todo.Dto;
 global using SSOPortalX.Data.App.User;
 global using SSOPortalX.Data.App.User.Dto;
 global using SSOPortalX.Data.Base;
 global using SSOPortalX.Data.Dashboard.Analytics;
-global using SSOPortalX.Data.Dashboard.ECommerce;
-global using SSOPortalX.Data.Dashboard.ECommerce.Dto;
 global using SSOPortalX.Data.Others.AccountSettings;
 global using SSOPortalX.Data.Others.AccountSettings.Dto;
 global using SSOPortalX.Data.Shared.Favorite;

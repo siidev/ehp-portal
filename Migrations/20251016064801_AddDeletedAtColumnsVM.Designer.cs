@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SSOPortalX.Data;
 
@@ -10,9 +11,11 @@ using SSOPortalX.Data;
 namespace SSOPortalX.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251016064801_AddDeletedAtColumnsVM")]
+    partial class AddDeletedAtColumnsVM
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -222,11 +225,7 @@ namespace SSOPortalX.Migrations
 
                     b.HasIndex("AppId");
 
-                    b.HasIndex("Token")
-                        .HasDatabaseName("IX_sso_portal_tokens_token");
-
-                    b.HasIndex("UserId", "IsActive", "ExpiresAt")
-                        .HasDatabaseName("IX_sso_portal_tokens_user_active_exp");
+                    b.HasIndex("UserId");
 
                     b.ToTable("sso_portal_tokens");
                 });

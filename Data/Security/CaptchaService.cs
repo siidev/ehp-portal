@@ -17,6 +17,15 @@ public class CaptchaService
         return (captchaCode, svgBytes);
     }
 
+    public (string code, byte[] image) GenerateCaptchaImage(int width, int height, string existingCode)
+    {
+        // Generate SVG-based CAPTCHA for existing code
+        var svg = GenerateSvgCaptcha(existingCode, width, height);
+        var svgBytes = System.Text.Encoding.UTF8.GetBytes(svg);
+        
+        return (existingCode, svgBytes);
+    }
+
     private string GenerateRandomCode(int length)
     {
         var result = new System.Text.StringBuilder(length);

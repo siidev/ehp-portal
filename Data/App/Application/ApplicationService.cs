@@ -7,42 +7,55 @@ namespace SSOPortalX.Data.App.Application
 {
     public class ApplicationService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public ApplicationService(ApplicationDbContext context)
+        public ApplicationService(IDbContextFactory<ApplicationDbContext> dbContextFactory)
         {
-            _context = context;
+            _dbContextFactory = dbContextFactory;
         }
 
         public async Task<List<SSOPortalX.Data.Models.Application>> GetApplicationsAsync()
         {
-            return await _context.Applications.Include(a => a.Category).ToListAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Applications
+                .Where(a => a.DeletedAt == null)
+                .Include(a => a.Category)
+                .ToListAsync();
         }
 
         public async Task<SSOPortalX.Data.Models.Application?> GetApplicationByIdAsync(int applicationId)
         {
-            return await _context.Applications.Include(a => a.Category).FirstOrDefaultAsync(a => a.Id == applicationId);
+            using var context = _dbContextFactory.CreateDbContext();
+            return await context.Applications
+                .Where(a => a.Id == applicationId && a.DeletedAt == null)
+                .Include(a => a.Category)
+                .FirstOrDefaultAsync();
         }
 
         public async Task CreateApplicationAsync(SSOPortalX.Data.Models.Application application)
         {
-            _context.Applications.Add(application);
-            await _context.SaveChangesAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            context.Applications.Add(application);
+            await context.SaveChangesAsync();
         }
 
         public async Task UpdateApplicationAsync(SSOPortalX.Data.Models.Application application)
         {
-            _context.Entry(application).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            using var context = _dbContextFactory.CreateDbContext();
+            context.Entry(application).State = EntityState.Modified;
+            await context.SaveChangesAsync();
         }
 
         public async Task DeleteApplicationAsync(int applicationId)
         {
-            var application = await _context.Applications.FindAsync(applicationId);
-            if (application != null)
+            using var context = _dbContextFactory.CreateDbContext();
+            var application = await context.Applications.FindAsync(applicationId);
+            if (application != null && application.DeletedAt == null)
             {
-                _context.Applications.Remove(application);
-                await _context.SaveChangesAsync();
+                application.DeletedAt = DateTime.UtcNow;
+                application.IsActive = false;
+                application.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
             }
         }
     }

@@ -7,18 +7,21 @@ namespace SSOPortalX.Data.App.User
 {
     public class UserService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly PasswordHasherService _passwordHasher;
 
-        public UserService(ApplicationDbContext context, PasswordHasherService passwordHasher)
+        public UserService(IDbContextFactory<ApplicationDbContext> contextFactory, PasswordHasherService passwordHasher)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _passwordHasher = passwordHasher;
         }
 
         public async Task<Models.User?> GetUserByUsernameAsync(string username)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username || u.Email == username);
+            using var context = _contextFactory.CreateDbContext();
+            return await context.Users
+                .Where(u => (u.Username == username || u.Email == username) && u.DeletedAt == null)
+                .FirstOrDefaultAsync();
         }
 
                                 public async Task UpdateUserAsync(UserDto userDto)
@@ -28,7 +31,8 @@ namespace SSOPortalX.Data.App.User
                 return;
             }
 
-            var user = await _context.Users.FindAsync(userId);
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
             if (user != null)
             {
                 user.Name = userDto.FullName;
@@ -38,17 +42,19 @@ namespace SSOPortalX.Data.App.User
                 user.IsActive = userDto.Status == "Active";
                 user.UpdatedAt = DateTime.UtcNow;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
 
         public async Task DeleteUserAsync(int userId)
         {
-            var user = await _context.Users.FindAsync(userId);
-            if (user != null)
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
+            if (user != null && user.DeletedAt == null)
             {
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
+                user.DeletedAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
             }
         }
 
@@ -66,8 +72,9 @@ namespace SSOPortalX.Data.App.User
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(newUser);
-            await _context.SaveChangesAsync();
+            using var context = _contextFactory.CreateDbContext();
+            context.Users.Add(newUser);
+            await context.SaveChangesAsync();
 
             return newUser;
         }
@@ -78,8 +85,9 @@ namespace SSOPortalX.Data.App.User
             user.CreatedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            using var context = _contextFactory.CreateDbContext();
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
 
             return user;
         }
@@ -98,13 +106,17 @@ namespace SSOPortalX.Data.App.User
         // The methods below are still using mock data and will be updated later.
                 public async Task<UserDto?> GetUserByIdAsync(int userId)
         {
-            var user = await _context.Users.FindAsync(userId);
+            using var context = _contextFactory.CreateDbContext();
+            var user = await context.Users.FindAsync(userId);
             return user == null ? null : new UserDto(user);
         }
 
         public async Task<List<UserDto>> GetListAsync()
         {
-            var users = await _context.Users.ToListAsync();
+            using var context = _contextFactory.CreateDbContext();
+            var users = await context.Users
+                .Where(u => u.DeletedAt == null)
+                .ToListAsync();
             return users.Select(u => new UserDto(u)).ToList();
         }
 

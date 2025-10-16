@@ -6,6 +6,8 @@
 @inject SSOPortalX.Data.Sso.SsoTokenService SsoTokenService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,User")]
 
 <PageTitle>My Applications - SSO Portal</PageTitle>
 
@@ -66,7 +68,7 @@
                                 <MSpacer />
                                 <MButton Color="primary" 
                                          OnClick="@(() => LaunchApplicationAsync(app))"
-                                         Disabled="@string.IsNullOrEmpty(app.WebhookUrl)"
+                                         Disabled="@(string.IsNullOrEmpty(app.WebhookUrl) || app.IsDisable)"
                                          Small>
                                     <MIcon Left Small>mdi-launch</MIcon>
                                     Launch
@@ -121,21 +123,12 @@ else
             }
 
             using var context = DbContextFactory.CreateDbContext();
-            
-            // Get accessible app IDs for user
-            var accessibleAppIds = await context.UserAppAccesses
-                .Where(uaa => uaa.UserId == currentUserId)
-                .Select(uaa => uaa.AppId)
-                .ToListAsync();
 
-            // Get all applications with categories
-            var allApps = await context.Applications
+            // Get applications accessible to current user in a single filtered query
+            var accessibleApps = await context.Applications
                 .Include(a => a.Category)
-                .Where(a => a.IsActive)
+                .Where(a => a.IsActive && context.UserAppAccesses.Any(uaa => uaa.UserId == currentUserId && uaa.AppId == a.Id))
                 .ToListAsync();
-
-            // Filter accessible apps
-            var accessibleApps = allApps.Where(app => accessibleAppIds.Contains(app.Id)).ToList();
 
             _appsByCat = accessibleApps.GroupBy(app => app.Category?.Name ?? "Uncategorized").ToList();
         }
@@ -150,6 +143,13 @@ else
     {
         try
         {
+            // Guard: prevent launching when app is disabled, inactive, or soft-deleted
+            if (app == null || app.IsDisable || !app.IsActive || app.DeletedAt != null || string.IsNullOrEmpty(app.WebhookUrl))
+            {
+                Console.WriteLine($"Launch blocked for app {app?.Name}: disabled/inactive/deleted or missing webhook.");
+                return;
+            }
+
             // Get current user ID from session
             var currentUserIdStr = await CookieStorage.GetAsync("CurrentUserId");
             
