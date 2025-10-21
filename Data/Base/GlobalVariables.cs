@@ -2,5 +2,5 @@
 
 public static class GlobalVariables
 {
-    public const string DefaultRoute = "dashboard/";    
+    public const string DefaultRoute = "/";    
 }

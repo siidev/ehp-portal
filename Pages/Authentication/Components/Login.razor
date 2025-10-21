@@ -1,11 +1,13 @@
-﻿<MCard Width=510 Height=680 Class="mx-auto my-auto">
+﻿@inject SSOPortalX.Data.Settings.SystemSettingsService SystemSettingsService
+
+<MCard Width=510 Height=680 Class="mx-auto my-auto">
     <div style="height:60px;"></div>
     <div class="mt-2 mx-auto text-center" style="width:420px;">
-        <MAvatar Size=80>
-            <MImage Src="/img/avatar/1.svg">
-            </MImage>
-        </MAvatar>
-        <h5 class="mt-2 mb-12">Welcome to EHP Portal 👋</h5>
+        <MImage Src="@_siteLogo">
+        </MImage>
+        
+        <!-- <h5 class="mt-2 mb-12">Welcome to EHP Portal 👋</h5> -->
+        <div class="mt-2 mb-12"></div>
 
         <MTextField @bind-Value="_email"
                     TValue="string"
@@ -73,3 +75,24 @@
 
     </div>
 </MCard>
+
+@code {
+    private string _siteLogo = "/img/mainLayout/eagle-high-logo.png";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var settings = await SystemSettingsService.GetAllSettingsAsync();
+            var fromDb = settings.GetValueOrDefault("site_logo");
+            if (!string.IsNullOrWhiteSpace(fromDb))
+            {
+                _siteLogo = fromDb!;
+            }
+        }
+        catch
+        {
+            // keep fallback logo on error
+        }
+    }
+}

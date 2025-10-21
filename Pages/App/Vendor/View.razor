@@ -1,4 +1,5 @@
 @page "/app/vendor/view/{Id:int}"
+@layout MainLayout
 @inherits ProComponentBase
 @using SSOPortalX.Data.App.Vendor
 @using SSOPortalX.Data.App.Vendor.Dto
@@ -7,7 +8,7 @@
 @attribute [Authorize(Roles = "Admin")]
 @inject NavigationManager NavigationManager
 
-<PageTitle>Vendor Details - SSO Portal</PageTitle>
+@* Remove hardcoded PageTitle; MainLayout sets dynamic title *@
 
 <div class="d-flex justify-space-between align-center mb-6">
     <h1 class="text-h4 font-weight-bold">Vendor Details</h1>

@@ -18,6 +18,7 @@ namespace SSOPortalX.Data
         public DbSet<UserAppAccess> UserAppAccesses { get; set; } = null!;
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
         public DbSet<Vendor> Vendors { get; set; } = null!;
+        public DbSet<SiteSettings> SiteSettings { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

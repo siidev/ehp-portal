@@ -1,6 +1,7 @@
 ﻿@inherits ProComponentBase
 @inject NavHelper NavHelper
 @inject GlobalConfig GlobalConfig
+@inject SSOPortalX.Data.Settings.SystemSettingsService SystemSettingsService
 @implements IDisposable
 @using Microsoft.AspNetCore.Components.Authorization
 
@@ -16,11 +17,11 @@
     <div class="logo" @onclick="() => NavHelper.NavigateTo(GlobalVariables.DefaultRoute)">
         @if (GlobalConfig.ExpandOnHover)
         {
-            <img class="hover-pointer" height="49" src="/img/mainLayout/eagle-high-logo-small.png" alt="SSO Portal" />
+            <img class="hover-pointer" height="49" src="@_siteLogoSmall" alt="SSO Portal" />
         }
         else
         {
-            <img class="hover-pointer" height="49" src="/img/mainLayout/eagle-high-logo.png" alt="SSO Portal" />
+            <img class="hover-pointer" height="49" src="@_siteLogo" alt="SSO Portal" />
         }
     </div>
 
@@ -166,6 +167,30 @@
         base.OnInitialized();
 
         GlobalConfig.NavigationStyleChanged += NavigationStyleChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadSiteLogosAsync();
+    }
+
+    private string _siteLogo = "/img/mainLayout/eagle-high-logo.png";
+    private string _siteLogoSmall = "/img/mainLayout/eagle-high-logo-small.png";
+
+    private async Task LoadSiteLogosAsync()
+    {
+        try
+        {
+            var settings = await SystemSettingsService.GetAllSettingsAsync();
+            _siteLogo = string.IsNullOrWhiteSpace(settings.GetValueOrDefault("site_logo"))
+                ? _siteLogo
+                : settings.GetValueOrDefault("site_logo")!;
+            _siteLogoSmall = string.IsNullOrWhiteSpace(settings.GetValueOrDefault("site_logo_small"))
+                ? _siteLogoSmall
+                : settings.GetValueOrDefault("site_logo_small")!;
+        }
+        catch { }
     }
 
     private void NavigationStyleChanged(object? sender, EventArgs e)

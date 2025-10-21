@@ -3,7 +3,7 @@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(EmptyLayout)">
                 <NotAuthorized>
                     @if (context.User.Identity?.IsAuthenticated != true)
                     {
@@ -11,19 +11,38 @@
                     }
                     else
                     {
-                        <div class="text-center pa-8">
-                            <h3>Access Denied</h3>
-                            <p>You don't have permission to view this page.</p>
-                        </div>
+                        <LayoutView Layout="@typeof(MainLayout)">
+                            <div class="text-center pa-8">
+                                <h3>Access Denied</h3>
+                                <p>You don't have permission to view this page.</p>
+                            </div>
+                        </LayoutView>
                     }
                 </NotAuthorized>
+                <Authorizing>
+                    <LayoutView Layout="@typeof(EmptyLayout)">
+                        <div class="text-center pa-8" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+                            <div>
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <p class="mt-2">Checking authentication...</p>
+                            </div>
+                        </div>
+                    </LayoutView>
+                </Authorizing>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
             <PageTitle>Not found</PageTitle>
-            <LayoutView Layout="@typeof(MainLayout)">
-                <p role="alert">Sorry, there's nothing at this address.</p>
+            <LayoutView Layout="@typeof(EmptyLayout)">
+                <div class="text-center pa-8" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+                    <div>
+                        <h2 class="mb-4">The requested URL was not found.</h2>
+                        <MButton Color="primary" Href="/">Back to home</MButton>
+                    </div>
+                </div>
             </LayoutView>
         </NotFound>
     </Router>

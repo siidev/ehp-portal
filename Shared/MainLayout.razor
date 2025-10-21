@@ -2,6 +2,7 @@
 @inject GlobalConfig GlobalConfig
 @inject NavHelper NavHelper
 @inject NavigationManager NavigationManager
+@inject SSOPortalX.Data.Settings.SystemSettingsService SystemSettingsService
 @using Masa.Blazor.Presets
 
 <PageTitle>@_pageTitle</PageTitle>
@@ -66,7 +67,26 @@
 
     private string PageModeClass => _pageTab == PageModes.PageTab ? "page-mode--tab" : "page-mode--breadcrumb";
 
-    private string _pageTitle = "SSO Portal";
+    private string _pageTitle = "EHP Portal";
+    private string _siteName = "EHP Portal";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSiteSettings();
+    }
+
+    private async Task LoadSiteSettings()
+    {
+        try
+        {
+            _siteName = await SystemSettingsService.GetSettingAsync("site_name") ?? "EHP Portal";
+            _pageTitle = _siteName;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading site settings: {ex.Message}");
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -109,7 +129,7 @@
             var active = NavHelper.SameLevelNavs.FirstOrDefault(n =>
                 Normalize(n.Href).Equals(relative, StringComparison.OrdinalIgnoreCase));
 
-            _pageTitle = active?.Title ?? "SSO Portal";
+            _pageTitle = active?.Title ?? _siteName;
 
             // Update page tab title to reflect the active menu
             var absolutePath = NavigationManager.GetAbsolutePath();
@@ -125,7 +145,7 @@
         }
         catch
         {
-            _pageTitle = "SSO Portal";
+            _pageTitle = _siteName;
         }
     }
 

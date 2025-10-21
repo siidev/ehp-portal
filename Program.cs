@@ -74,6 +74,7 @@ builder.Services.AddScoped<SSOPortalX.Data.Others.AccountSettings.AccountSetting
 builder.Services.AddScoped<SSOPortalX.Data.Services.EmailService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<SSOPortalX.Data.Webhook.WebhookService>();
+builder.Services.AddScoped<SSOPortalX.Data.Settings.SystemSettingsService>();
 
 var app = builder.Build();
 
@@ -132,5 +133,19 @@ app.MapGet("/validate-token", async (string token, SSOPortalX.Data.Sso.SsoTokenS
 });
 
 app.MapFallbackToPage("/_Host");
+
+// Initialize default system settings
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var systemSettingsService = scope.ServiceProvider.GetRequiredService<SSOPortalX.Data.Settings.SystemSettingsService>();
+        await systemSettingsService.InitializeDefaultSettingsAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error initializing system settings: {ex.Message}");
+    }
+}
 
 app.Run();

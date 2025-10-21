@@ -68,7 +68,7 @@
         "Id": 18,
         "Title": "System Settings",
         "Icon": "mdi-cog-outline",
-        "Href": "/app/settings/system",
+        "Href": "/app/configuration/settings",
         "Roles": ["Admin"]
       },
       {

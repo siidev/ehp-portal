@@ -1,4 +1,5 @@
 @page "/"
+@layout MainLayout
 @inherits ProComponentBase
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
@@ -9,7 +10,7 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Admin,User")]
 
-<PageTitle>My Applications - SSO Portal</PageTitle>
+@* Remove hardcoded PageTitle; MainLayout sets dynamic title *@
 
 <div class="d-flex justify-space-between align-center mb-6">
     <h1 class="text-h4 font-weight-bold">My Applications</h1>
@@ -52,10 +53,17 @@
                                     }
                                     else
                                     {
-                                        <MAvatar Size="40" Class="mr-3">
-                                            <MImage Src="@app.IconUrl" Alt="@app.Name" Style="object-fit: contain;" 
-                                                    ErrorSrc="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0MzE4RkYiLz4KPHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0idHJhbnNmb3JtOiB0cmFuc2xhdGUoOHB4LCA4cHgpIj4KPHBhdGggZD0iTTEyIDJDMTMuMSAyIDE0IDIuOSAxNCA0VjhDMTQgOS4xIDEzLjEgMTAgMTIgMTBIMTBWOUgxMi41VjRDMTIuNSAzLjcyIDEyLjI4IDMuNSAxMiAzLjVTMTEuNSAzLjcyIDExLjUgNFY4QzExLjUgOS4zIDEyLjIgMTAgMTMgMTBIMTVWMTJIMTNDMTEuMzQgMTIgMTAgMTAuNjYgMTAgOVY0QzEwIDIuOSAxMC45IDIgMTIgMlpNNiA2VjhIMi41TDYgMTJMMiAxNkg2VjE4SDhWMTZIMTJWMTRIOFYxMkgxMlYxMEg4VjhIMTJWNkg4VjRINlY2Wk0xNiAxNFYxNkgxOFYxNEgxNloiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo8L3N2Zz4K" />
-                                        </MAvatar>
+                                        <div class="mr-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f5f5f5; border-radius: 8px; overflow: hidden; position: relative;">
+                                            <img src="@app.IconUrl" alt="@app.Name" 
+                                                 style="width: 100%; height: 100%; object-fit: contain; object-position: center; max-width: 40px; max-height: 40px; display: block;" 
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" 
+                                                 onload="console.log('Successfully loaded:', '@app.IconUrl')" />
+                                            <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: #4318FF; border-radius: 50%;">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                                    <path d="M12 2C13.1 2 14 2.9 14 4V8C14 9.1 13.1 10 12 10H10V9H12.5V4C12.5 3.72 12.28 3.5 12 3.5S11.5 3.72 11.5 4V8C11.5 9.3 12.2 10 13 10H15V12H13C11.34 12 10 10.66 10 9V4C10 2.9 10.9 2 12 2ZM6 6V8H2.5L6 12L2 16H6V18H8V16H12V14H8V12H12V10H8V8H12V6H8V4H6V6ZM16 14V16H18V14H16Z"/>
+                                                </svg>
+                                            </div>
+                                        </div>
                                     }
                                     <div>
                                         <h4 class="text-subtitle-1 font-weight-medium mb-1">@app.Name</h4>

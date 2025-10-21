@@ -1,0 +1,253 @@
+@page "/app/configuration/settings"
+@layout MainLayout
+@inherits ProComponentBase
+@inject SSOPortalX.Data.Settings.SystemSettingsService SystemSettingsService
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@* Remove hardcoded PageTitle so MainLayout can set dynamic title *@
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <h1 class="text-h4 font-weight-bold mb-2">System Settings</h1>
+        <p class="text-body-1 text--secondary">Configure website appearance and branding</p>
+    </div>
+    <MButton Color="grey" OnClick="@(() => NavigationManager.NavigateTo("/"))">
+        <MIcon Left>mdi-arrow-left</MIcon>
+        Back to Dashboard
+    </MButton>
+</div>
+
+<MRow>
+    <MCol Cols="12" Md="8">
+        <MCard>
+            <MCardTitle>
+                <span class="text-h5">Website Configuration</span>
+            </MCardTitle>
+            <MCardText>
+                <MForm @ref="_form" Model="_settings" EnableValidation="true">
+                    <MRow>
+                        <MCol Cols="12" Md="6">
+                            <MTextField @bind-Value="_settings.SiteName"
+                                       Label="Site Name"
+                                       Hint="Nama website yang akan muncul di title page"
+                                       PersistentHint
+                                       Required
+                                       Outlined
+                                       Class="mb-4" />
+                        </MCol>
+                        <MCol Cols="12" Md="6">
+                            <MTextField @bind-Value="_settings.SiteDescription"
+                                       Label="Site Description"
+                                       Hint="Deskripsi website untuk SEO"
+                                       PersistentHint
+                                       Outlined
+                                       Class="mb-4" />
+                        </MCol>
+                    </MRow>
+
+                    <MRow>
+                        <MCol Cols="12" Md="6">
+                            <MTextField @bind-Value="_settings.SiteLogo"
+                                       Label="Site Logo URL"
+                                       Hint="URL atau path ke logo website"
+                                       PersistentHint
+                                       Outlined
+                                       Class="mb-4" />
+                        </MCol>
+                        <MCol Cols="12" Md="6">
+                            <MTextField @bind-Value="_settings.SiteLogoSmall"
+                                       Label="Small Logo URL"
+                                       Hint="URL atau path ke logo kecil (mini)"
+                                       PersistentHint
+                                       Outlined
+                                       Class="mb-4" />
+                        </MCol>
+                    </MRow>
+
+                    <MRow>
+                        <MCol Cols="12" Md="6">
+                            <MTextField @bind-Value="_settings.SiteFavicon"
+                                       Label="Site Favicon URL"
+                                       Hint="URL atau path ke favicon website"
+                                       PersistentHint
+                                       Outlined
+                                       Class="mb-4" />
+                        </MCol>
+                    </MRow>
+
+                    <MRow>
+                        <MCol Cols="12" Md="6">
+                            <MTextField @bind-Value="_settings.SiteKeywords"
+                                       Label="Site Keywords"
+                                       Hint="Keywords untuk SEO (pisahkan dengan koma)"
+                                       PersistentHint
+                                       Outlined
+                                       Class="mb-4" />
+                        </MCol>
+                    </MRow>
+
+                    <div class="d-flex justify-end ga-2 mt-6">
+                        <MButton Color="grey" OnClick="ResetSettings" Outlined>
+                            <MIcon Left>mdi-refresh</MIcon>
+                            Reset
+                        </MButton>
+                        <MButton Color="primary" OnClick="SaveSettings" Loading="_isSaving">
+                            <MIcon Left>mdi-content-save</MIcon>
+                            Save Settings
+                        </MButton>
+                    </div>
+                </MForm>
+            </MCardText>
+        </MCard>
+    </MCol>
+    
+    <MCol Cols="12" Md="4">
+        <MCard>
+            <MCardTitle>
+                <span class="text-h5">Preview</span>
+            </MCardTitle>
+            <MCardText>
+                <div class="text-center">
+                    <h6 class="text-subtitle-1 mb-4">Website Preview</h6>
+                    
+                    @if (!string.IsNullOrEmpty(_settings.SiteLogo))
+                    {
+                        <div class="mb-4">
+                            <p class="text-caption mb-2">Logo Preview:</p>
+                            <img src="@_settings.SiteLogo" alt="Logo Preview" 
+                                 style="max-height: 80px; max-width: 200px; object-fit: contain; border: 1px solid #e0e0e0; border-radius: 4px; padding: 8px;" 
+                                 onerror="this.style.display='none';" />
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(_settings.SiteLogoSmall))
+                    {
+                        <div class="mb-4">
+                            <p class="text-caption mb-2">Small Logo Preview:</p>
+                            <img src="@_settings.SiteLogoSmall" alt="Small Logo Preview"
+                                 style="max-height: 40px; max-width: 120px; object-fit: contain; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px;"
+                                 onerror="this.style.display='none';" />
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_settings.SiteFavicon))
+                    {
+                        <div class="mb-4">
+                            <p class="text-caption mb-2">Favicon Preview:</p>
+                            <img src="@_settings.SiteFavicon" alt="Favicon Preview" 
+                                 style="width: 32px; height: 32px; object-fit: contain; border: 1px solid #e0e0e0; border-radius: 4px; padding: 4px;" 
+                                 onerror="this.style.display='none';" />
+                        </div>
+                    }
+                    
+                    
+                    
+                    <div class="text-left">
+                        <p class="text-caption mb-1"><strong>Site Name:</strong></p>
+                        <p class="text-body-2 mb-3">@(_settings.SiteName ?? "EHP Portal")</p>
+                        
+                        <p class="text-caption mb-1"><strong>Description:</strong></p>
+                        <p class="text-body-2 mb-3">@(_settings.SiteDescription ?? "Enterprise Health Portal")</p>
+                        
+                        <p class="text-caption mb-1"><strong>Keywords:</strong></p>
+                        <p class="text-body-2">@(_settings.SiteKeywords ?? "EHP, Portal, Enterprise, Health")</p>
+                    </div>
+                </div>
+            </MCardText>
+        </MCard>
+    </MCol>
+</MRow>
+
+@code {
+    private MForm? _form;
+    private bool _isSaving = false;
+    private bool _isLoading = true;
+
+    private SystemSettingsModel _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        try
+        {
+            _isLoading = true;
+            
+            var settings = await SystemSettingsService.GetAllSettingsAsync();
+            
+            _settings = new SystemSettingsModel
+            {
+                SiteName = settings.GetValueOrDefault("site_name", "EHP Portal"),
+                SiteDescription = settings.GetValueOrDefault("site_description", "Enterprise Health Portal"),
+                SiteLogo = settings.GetValueOrDefault("site_logo", ""),
+                SiteLogoSmall = settings.GetValueOrDefault("site_logo_small", ""),
+                SiteFavicon = settings.GetValueOrDefault("site_favicon", ""),
+                // SiteThemeColor removed
+                SiteKeywords = settings.GetValueOrDefault("site_keywords", "EHP, Portal, Enterprise, Health")
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading settings: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        if (_form?.Validate() != true) return;
+
+        try
+        {
+            _isSaving = true;
+
+            await SystemSettingsService.SetSettingsBatchAsync(new Dictionary<string, string>
+            {
+                ["site_name"] = _settings.SiteName,
+                ["site_description"] = _settings.SiteDescription,
+                ["site_logo"] = _settings.SiteLogo,
+                ["site_logo_small"] = _settings.SiteLogoSmall,
+                ["site_favicon"] = _settings.SiteFavicon,
+                // site_theme_color removed
+                ["site_keywords"] = _settings.SiteKeywords
+            });
+
+            // Show success message
+            // You can add a toast notification here if you have one
+
+            Console.WriteLine("Settings saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving settings: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ResetSettings()
+    {
+        await LoadSettings();
+    }
+
+    public class SystemSettingsModel
+    {
+        public string SiteName { get; set; } = "";
+        public string SiteDescription { get; set; } = "";
+        public string SiteLogo { get; set; } = "";
+        public string SiteLogoSmall { get; set; } = "";
+        public string SiteFavicon { get; set; } = "";
+        // public string SiteThemeColor { get; set; } = "";
+        public string SiteKeywords { get; set; } = "";
+    }
+}

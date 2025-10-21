@@ -3,7 +3,6 @@ global using SSOPortalX;
 global using SSOPortalX.Data.App.User;
 global using SSOPortalX.Data.App.User.Dto;
 global using SSOPortalX.Data.Base;
-global using SSOPortalX.Data.Dashboard.Analytics;
 global using SSOPortalX.Data.Others.AccountSettings;
 global using SSOPortalX.Data.Others.AccountSettings.Dto;
 global using SSOPortalX.Data.Shared.Favorite;
