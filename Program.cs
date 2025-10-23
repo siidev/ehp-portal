@@ -14,7 +14,14 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONM
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+builder.Services.AddServerSideBlazor(options =>
+{
+    options.DetailedErrors = true;
+    options.DisconnectedCircuitMaxRetained = 100;
+    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(3);
+    options.JSInteropDefaultCallTimeout = TimeSpan.FromMinutes(1);
+    options.MaxBufferedUnacknowledgedRenderBatches = 10;
+});
 
 // Add Authentication & Authorization
 builder.Services.AddAuthentication("Cookies")
@@ -99,7 +106,34 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapBlazorHub();
+app.MapBlazorHub(options =>
+{
+    options.CloseOnAuthenticationExpiration = true;
+});
+
+// Add global error handling for Blazor Server
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Global error handler: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        
+        // Don't re-throw to prevent circuit termination
+        if (context.Request.Path.StartsWithSegments("/_blazor"))
+        {
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsync("Internal server error");
+            return;
+        }
+        
+        throw;
+    }
+});
 
 app.MapGet("/validate-token", async (string token, SSOPortalX.Data.Sso.SsoTokenService tokenService) =>
 {

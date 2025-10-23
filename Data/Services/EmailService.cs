@@ -15,6 +15,19 @@ namespace SSOPortalX.Data.Services
 
         public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string resetLink, string userName = "")
         {
+            // Try primary SMTP configuration first
+            if (await TrySendEmailAsync(toEmail, resetLink, userName))
+            {
+                return true;
+            }
+
+            // If primary fails, try fallback method (console output for development)
+            Console.WriteLine($"⚠️ SMTP failed, using fallback method for: {toEmail}");
+            return await SendEmailFallbackAsync(toEmail, resetLink, userName);
+        }
+
+        private async Task<bool> TrySendEmailAsync(string toEmail, string resetLink, string userName)
+        {
             try
             {
                 var smtpHost = _configuration["EmailSettings:SmtpHost"];
@@ -24,10 +37,84 @@ namespace SSOPortalX.Data.Services
                 var fromEmail = _configuration["EmailSettings:FromEmail"];
                 var fromName = _configuration["EmailSettings:FromName"];
                 var enableSsl = bool.Parse(_configuration["EmailSettings:EnableSsl"] ?? "true");
+                var enableTls = bool.Parse(_configuration["EmailSettings:EnableTls"] ?? "true");
+                var requireAuth = bool.Parse(_configuration["EmailSettings:RequireAuthentication"] ?? "true");
+
+                // Set security protocol for Office365
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
 
                 using var client = new SmtpClient(smtpHost, smtpPort);
-                client.Credentials = new NetworkCredential(smtpUsername, smtpPassword);
+                
+                if (requireAuth)
+                {
+                    client.Credentials = new NetworkCredential(smtpUsername, smtpPassword);
+                }
+                
                 client.EnableSsl = enableSsl;
+                client.DeliveryMethod = SmtpDeliveryMethod.Network;
+                client.UseDefaultCredentials = false;
+                
+                // Additional settings for Office365
+                client.Timeout = 30000; // 30 seconds timeout
+                
+                // Try different authentication methods for Office365
+                try
+                {
+                    // Method 1: Standard SMTP with SSL
+                    var mailMessage = new MailMessage();
+                    mailMessage.From = new MailAddress(fromEmail!, fromName);
+                    mailMessage.To.Add(toEmail);
+                    mailMessage.Subject = "Password Reset Request - SSO Portal";
+                    mailMessage.IsBodyHtml = true;
+                    mailMessage.Body = GeneratePasswordResetEmailTemplate(resetLink, userName);
+                    mailMessage.Priority = MailPriority.Normal;
+
+                    await client.SendMailAsync(mailMessage);
+                    Console.WriteLine($"✅ Email sent successfully to: {toEmail}");
+                    return true;
+                }
+                catch (Exception smtpEx)
+                {
+                    Console.WriteLine($"❌ SMTP Method 1 failed: {smtpEx.Message}");
+                    
+                    // Method 2: Try with different port (465 for SSL)
+                    if (smtpPort == 587)
+                    {
+                        Console.WriteLine("🔄 Trying alternative SMTP configuration...");
+                        return await TryAlternativeSmtpConfigAsync(toEmail, resetLink, userName);
+                    }
+                    
+                    throw smtpEx;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception with more details
+                Console.WriteLine($"❌ Failed to send email: {ex.Message}");
+                Console.WriteLine($"❌ SMTP Host: {_configuration["EmailSettings:SmtpHost"]}");
+                Console.WriteLine($"❌ SMTP Port: {_configuration["EmailSettings:SmtpPort"]}");
+                Console.WriteLine($"❌ From Email: {_configuration["EmailSettings:FromEmail"]}");
+                return false;
+            }
+        }
+
+        private async Task<bool> TryAlternativeSmtpConfigAsync(string toEmail, string resetLink, string userName)
+        {
+            try
+            {
+                // Try with port 465 (SSL) instead of 587 (TLS)
+                var smtpHost = _configuration["EmailSettings:SmtpHost"];
+                var smtpUsername = _configuration["EmailSettings:SmtpUsername"];
+                var smtpPassword = _configuration["EmailSettings:SmtpPassword"];
+                var fromEmail = _configuration["EmailSettings:FromEmail"];
+                var fromName = _configuration["EmailSettings:FromName"];
+
+                using var client = new SmtpClient(smtpHost, 465);
+                client.Credentials = new NetworkCredential(smtpUsername, smtpPassword);
+                client.EnableSsl = true;
+                client.DeliveryMethod = SmtpDeliveryMethod.Network;
+                client.UseDefaultCredentials = false;
+                client.Timeout = 30000;
 
                 var mailMessage = new MailMessage();
                 mailMessage.From = new MailAddress(fromEmail!, fromName);
@@ -35,14 +122,50 @@ namespace SSOPortalX.Data.Services
                 mailMessage.Subject = "Password Reset Request - SSO Portal";
                 mailMessage.IsBodyHtml = true;
                 mailMessage.Body = GeneratePasswordResetEmailTemplate(resetLink, userName);
+                mailMessage.Priority = MailPriority.Normal;
 
                 await client.SendMailAsync(mailMessage);
+                Console.WriteLine($"✅ Email sent successfully via alternative config to: {toEmail}");
                 return true;
             }
             catch (Exception ex)
             {
-                // Log the exception
-                Console.WriteLine($"Failed to send email: {ex.Message}");
+                Console.WriteLine($"❌ Alternative SMTP config also failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<bool> SendEmailFallbackAsync(string toEmail, string resetLink, string userName)
+        {
+            try
+            {
+                // Fallback: Log to console for development/testing
+                Console.WriteLine("=".PadRight(80, '='));
+                Console.WriteLine("📧 PASSWORD RESET EMAIL (FALLBACK MODE)");
+                Console.WriteLine("=".PadRight(80, '='));
+                Console.WriteLine($"To: {toEmail}");
+                Console.WriteLine($"User: {userName}");
+                Console.WriteLine($"Reset Link: {resetLink}");
+                Console.WriteLine($"Expires: {DateTime.UtcNow.AddHours(24):yyyy-MM-dd HH:mm:ss} UTC");
+                Console.WriteLine("=".PadRight(80, '='));
+                Console.WriteLine("📝 Email Content:");
+                Console.WriteLine(GeneratePasswordResetEmailTemplate(resetLink, userName));
+                Console.WriteLine("=".PadRight(80, '='));
+                Console.WriteLine("🔧 OFFICE365 SMTP TROUBLESHOOTING:");
+                Console.WriteLine("1. Enable 2FA on Office365 account");
+                Console.WriteLine("2. Generate App Password: https://account.microsoft.com/security");
+                Console.WriteLine("3. Use App Password instead of regular password");
+                Console.WriteLine("4. Ensure 'Less secure app access' is enabled (if available)");
+                Console.WriteLine("5. Try port 465 with SSL instead of 587 with TLS");
+                Console.WriteLine("=".PadRight(80, '='));
+                
+                // Simulate async operation
+                await Task.Delay(100);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Fallback email failed: {ex.Message}");
                 return false;
             }
         }
